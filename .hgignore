@@ -7,3 +7,8 @@ syntax: glob
 *.log
 *.make
 *.pdf
+.HOLMK
+*.sig
+*Theory.sml
+*.ui
+*.uo
