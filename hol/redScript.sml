@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory lcsymtacs
+open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory lcsymtacs;
 
 val _ = new_theory "red";
 
@@ -63,20 +63,36 @@ srw_tac [][Abbr`t1`,Abbr`t2`] >>
 imp_res_tac occurs_not_unify >>
 full_simp_tac (srw_ss()) []);
 
+val move_var_early = Q.store_thm(
+"move_var_early",
+`(SAPPLY s (Var x) = SAPPLY s t) ==> (SAPPLY s o (SAPPLY (FEMPTY|+(x,t))) = SAPPLY s)`,
+strip_tac >>
+full_simp_tac (srw_ss()) [FUN_EQ_THM] >>
+ho_match_mp_tac term_ind >>
+srw_tac [][FLOOKUP_UPDATE] >>
+full_simp_tac (srw_ss()) [rich_listTheory.MAP_EQ_f,rich_listTheory.MAP_MAP_o,EVERY_MEM]);
+
 val var_elim_sound = Q.store_thm( (* half of Theorem 2.2 *)
 "var_elim_sound",
 `var_elim eqs1 eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
 srw_tac [][var_elim_cases] >>
 srw_tac [][set_unifier_def,EXTENSION,EQ_IMP_THM] >>
-full_simp_tac (srw_ss()) [] >- (
+full_simp_tac (srw_ss()) [EXISTS_PROD] >- (
+  Q.MATCH_RENAME_TAC `SAPPLY s t1 = SAPPLY s t2` [] >>
+  `SAPPLY s (Var x) = SAPPLY s t` by res_tac >>
+  imp_res_tac move_var_early >>
+  full_simp_tac (srw_ss()) [FUN_EQ_THM] >>
   Q.MATCH_ASSUM_RENAME_TAC `eq ∈ eqs1` [] >>
-  Cases_on `eq` >> full_simp_tac (srw_ss()) [] >> srw_tac [][] >>
-  Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) ∈ eqs1` [] >- (
-
-    Cases_on `t1` >> srw_tac [][FLOOKUP_UPDATE] >- (
-      res_tac >> full_simp_tac (srw_ss()) [] >>
-      Cases_on `t2` >> full_simp_tac (srw_ss()) [FLOOKUP_UPDATE] >>
-      srw_tac [][] >> srw_tac [][] >>
-
+  Cases_on `eq` >> full_simp_tac (srw_ss()) []) >>
+Q.MATCH_RENAME_TAC `SAPPLY s t1 = SAPPLY s t2` [] >>
+`SAPPLY s (Var x) = SAPPLY s t` by metis_tac [] >>
+imp_res_tac move_var_early >>
+full_simp_tac (srw_ss()) [FUN_EQ_THM] >>
+Cases_on `(t1,t2) = (Var x,t)` >>
+full_simp_tac (srw_ss()) [] >>
+srw_tac [][] >>
+FIRST_X_ASSUM (Q.SPECL_THEN [`SAPPLY (FEMPTY |+ (x,t)) t1`, `SAPPLY (FEMPTY |+ (x,t)) t2`] MP_TAC) >>
+srw_tac [][] >>
+metis_tac []);
 
 val _ = export_theory ();
