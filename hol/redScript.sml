@@ -100,11 +100,15 @@ FIRST_X_ASSUM (Q.SPECL_THEN [`SAPPLY (FEMPTY |+ (x,t)) t1`, `SAPPLY (FEMPTY |+ (
 srw_tac [][] >>
 metis_tac []);
 
+val varseq_def = Define`
+  varseq (t1, t2) = vars t1 ∪ vars t2`;
+val _ = export_rewrites ["varseq_def"];
+
 val solved_form_def = Define`
   solved_form eqs = FINITE eqs ∧
   ∀eq. eq ∈ eqs ⇒
     ∃v t. (eq = (Var v, t)) ∧ (v ∉ vars t) ∧
-          ∀t1 t2. (t1,t2) ∈ eqs ∧ (t1,t2) ≠ eq ⇒ v ∉ vars t1 ∧ v ∉ vars t2`;
+          ∀eq'. eq' ∈ eqs ∧ eq' ≠ eq ⇒ v ∉ varseq eq'`;
 
 val FDOM_DISJOINT_vars = Q.store_thm(
 "FDOM_DISJOINT_vars",
@@ -141,9 +145,14 @@ srw_tac [][FLOOKUP_FUN_FMAP] >- (
   match_mp_tac (GSYM FDOM_DISJOINT_vars) >>
   srw_tac [][IN_DISJOINT,FUN_FMAP_DEF] >>
   Cases_on `x ∈ vars t` >> srw_tac [][] >>
+  Cases_on `x = v` >> full_simp_tac (srw_ss()) [] >>
+  Q.MATCH_ABBREV_TAC `eq ∉ eqs` >>
+  NTAC 2 (FIRST_X_ASSUM (Q.SPEC_THEN `eq` MP_TAC)) >>
+  srw_tac [][Abbr`eq`] >>
   SPOSE_NOT_THEN STRIP_ASSUME_TAC >>
-  res_tac >> srw_tac [][] >>
-  metis_tac [] ) >>
+  full_simp_tac (srw_ss()) [] >>
+  FIRST_X_ASSUM (Q.SPEC_THEN `(Var v,t)` MP_TAC) >>
+  srw_tac [][] ) >>
 full_simp_tac (srw_ss()) []);
 
 (* prove the solved form unifier most general? *)
