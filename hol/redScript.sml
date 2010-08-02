@@ -148,4 +148,14 @@ full_simp_tac (srw_ss()) []);
 
 (* prove the solved form unifier most general? *)
 
+(* Algorithm A *)
+val (alga1_rules,alga1_ind,alga1_cases) = Hol_reln`
+  ((t, Var x) ∈ eqs ⇒ alga1 eqs ((Var x, t) INSERT (eqs DELETE (t, Var x)))) ∧
+  ((Var x, Var x) ∈ eqs ⇒ alga1 eqs (eqs DELETE (Var x, Var x))) ∧
+  (term_red eqs1 eq eqs2 ⇒ alga1 eqs1 eqs2) ∧
+  (var_elim eqs1 (Var x, t) eqs2 ∧ x ∉ vars t ∧
+   (∃t1 t2. (t1,t2) ∈ eqs1 ∧ (t1,t2) ≠ (Var x, t) ∧
+            (x ∈ vars t1 ∨ x ∈ vars t2))
+   ⇒ alga1 eqs1 eqs2)`;
+
 val _ = export_theory ();
