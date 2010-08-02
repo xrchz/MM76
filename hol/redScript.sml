@@ -2,6 +2,11 @@ open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listT
 
 val _ = new_theory "red";
 
+val FLOOKUP_FUN_FMAP = Q.store_thm(
+"FLOOKUP_FUN_FMAP",
+`FINITE P ⇒ (FLOOKUP (FUN_FMAP f P) k = if k ∈ P then SOME (f k) else NONE)`,
+srw_tac [][FUN_FMAP_DEF,FLOOKUP_DEF]);
+
 val _ = type_abbrev("equation", ``:('a,'b) term # ('a,'b) term``);
 
 val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
@@ -94,5 +99,53 @@ srw_tac [][] >>
 FIRST_X_ASSUM (Q.SPECL_THEN [`SAPPLY (FEMPTY |+ (x,t)) t1`, `SAPPLY (FEMPTY |+ (x,t)) t2`] MP_TAC) >>
 srw_tac [][] >>
 metis_tac []);
+
+val solved_form_def = Define`
+  solved_form eqs = FINITE eqs ∧
+  ∀eq. eq ∈ eqs ⇒
+    ∃v t. (eq = (Var v, t)) ∧ (v ∉ vars t) ∧
+          ∀t1 t2. (t1,t2) ∈ eqs ∧ (t1,t2) ≠ eq ⇒ v ∉ vars t1 ∧ v ∉ vars t2`;
+
+val FDOM_DISJOINT_vars = Q.store_thm(
+"FDOM_DISJOINT_vars",
+`DISJOINT (FDOM s) (vars t) ⇒ (SAPPLY s t = t)`,
+Q.ID_SPEC_TAC `t` >>
+ho_match_mp_tac term_ind >>
+srw_tac [][IN_DISJOINT,FLOOKUP_DEF] >>
+full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,MEM_EL,LIST_EQ_REWRITE] >>
+srw_tac [][rich_listTheory.EL_MAP] >>
+metis_tac []);
+
+val solved_form_unifier = Q.store_thm(
+"solved_form_unifier",
+`solved_form eqs ⇒ (FUN_FMAP (λv. @t. (Var v,t) ∈ eqs) {v | ∃t. (Var v, t) ∈ eqs}) ∈ set_unifier eqs`,
+strip_tac >>
+Q.MATCH_ABBREV_TAC `FUN_FMAP f P ∈ set_unifier eqs` >>
+`P = (IMAGE (term_case I ARB o FST) eqs)` by (
+  srw_tac [][EXTENSION,Abbr`P`,EQ_IMP_THM] >- (
+    qexists_tac `(Var x, t)` >> srw_tac [][] ) >>
+  full_simp_tac (srw_ss()) [solved_form_def] >>
+  res_tac >> srw_tac [][] >>
+  qexists_tac `t` >> asm_simp_tac pure_ss [] ) >>
+`FINITE eqs` by full_simp_tac pure_ss [solved_form_def] >>
+`FINITE P` by full_simp_tac pure_ss [IMAGE_FINITE] >>
+srw_tac [][set_unifier_def] >>
+full_simp_tac (srw_ss()) [solved_form_def] >>
+UNABBREV_ALL_TAC >>
+res_tac >> srw_tac [][] >>
+srw_tac [][FLOOKUP_FUN_FMAP] >- (
+  SELECT_ELIM_TAC >>
+  srw_tac [][] >- (qexists_tac `t` >> asm_simp_tac pure_ss []) >>
+  res_tac >> srw_tac [][] >>
+  full_simp_tac (srw_ss()) [] >>
+  match_mp_tac (GSYM FDOM_DISJOINT_vars) >>
+  srw_tac [][IN_DISJOINT,FUN_FMAP_DEF] >>
+  Cases_on `x ∈ vars t` >> srw_tac [][] >>
+  SPOSE_NOT_THEN STRIP_ASSUME_TAC >>
+  res_tac >> srw_tac [][] >>
+  metis_tac [] ) >>
+full_simp_tac (srw_ss()) []);
+
+(* prove the solved form unifier most general? *)
 
 val _ = export_theory ();
