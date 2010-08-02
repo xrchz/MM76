@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory lcsymtacs;
+open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory arithmeticTheory lcsymtacs;
 
 val _ = new_theory "red";
 
@@ -167,8 +167,8 @@ full_simp_tac (srw_ss()) []);
 val (alga1_rules,alga1_ind,alga1_cases) = Hol_reln`
   (FINITE eqs ∧ (t, Var x) ∈ eqs ∧ (∀y. t ≠ Var y) ⇒ alga1 eqs ((Var x, t) INSERT (eqs DELETE (t, Var x)))) ∧
   (FINITE eqs ∧ (Var x, Var x) ∈ eqs ⇒ alga1 eqs (eqs DELETE (Var x, Var x))) ∧
-  (FINITE eqs ∧ term_red eqs1 eq eqs2 ⇒ alga1 eqs1 eqs2) ∧
-  (FINITE eqs ∧ var_elim eqs1 (Var x, t) eqs2 ∧
+  (FINITE eqs1 ∧ term_red eqs1 eq eqs2 ⇒ alga1 eqs1 eqs2) ∧
+  (FINITE eqs1 ∧ var_elim eqs1 (Var x, t) eqs2 ∧
    x ∉ vars t ∧ (∃eq. eq ∈ eqs1 ∧ eq ≠ (Var x, t) ∧ (x ∈ varseq eq))
    ⇒ alga1 eqs1 eqs2)`;
 
@@ -184,6 +184,19 @@ srw_tac [][EXTENSION,EQ_IMP_THM] >> metis_tac []);
 val CARD_PSUBSET_match = (SIMP_RULE (srw_ss()) [GSYM RIGHT_FORALL_IMP_THM,AND_IMP_INTRO] CARD_PSUBSET);
 val CARD_SUBSET_match = (SIMP_RULE (srw_ss()) [GSYM RIGHT_FORALL_IMP_THM,AND_IMP_INTRO] CARD_SUBSET);
 val SUBSET_FINITE_match = (SIMP_RULE (srw_ss()) [GSYM RIGHT_FORALL_IMP_THM,AND_IMP_INTRO] SUBSET_FINITE);
+
+val SUM_IMAGE_LIST_TO_SET = Q.store_thm(
+"SUM_IMAGE_LIST_TO_SET",
+`SIGMA f (set ls) <= SUM (MAP f ls)`,
+Q.ID_SPEC_TAC `ls` >> Induct >>
+srw_tac [][SUM_IMAGE_THM,SUM_IMAGE_DELETE] >>
+DECIDE_TAC);
+
+val SUM_MAP_ZIP = Q.store_thm(
+"SUM_MAP_ZIP",
+`(LENGTH ls1 = LENGTH ls2) /\ (!x y. f (x,y) = g x + h y) ==>(SUM (MAP f (ZIP (ls1,ls2))) = SUM (MAP g ls1) + SUM (MAP h ls2))`,
+MAP_EVERY Q.ID_SPEC_TAC [`ls2`,`ls1`] >>
+Induct >> Cases_on `ls2` >> srw_tac [ARITH_ss][]);
 
 val WF_alga1 = Q.store_thm( (* Theorem 2.3 a *)
 "WF_alga1",
@@ -201,9 +214,9 @@ srw_tac [][] >- (
 full_simp_tac (srw_ss()) [inv_DEF] >>
 Q.MATCH_ASSUM_RENAME_TAC `alga1 eqs1 eqs2` [] >>
 Q.HO_MATCH_ABBREV_TAC `inv_image f (λeqs. (CARD (s1 eqs), SIGMA fsym_counteq eqs, CARD (s2 eqs))) eqs2 eqs1` >>
-full_simp_tac pure_ss [alga1_cases] >- (
-  srw_tac [][inv_image_def,LEX_DEF,Abbr`f`] >>
-  Q.MATCH_ABBREV_TAC `n1b < n1a ∨ ((n1b = n1a) ∧ (n2b < n2a ∨ ((n2b = n2a) ∧ n3b < n3a)))` >>
+full_simp_tac pure_ss [alga1_cases] >>
+srw_tac [][inv_image_def,LEX_DEF,Abbr`f`] >>
+Q.MATCH_ABBREV_TAC `n1b < n1a ∨ ((n1b = n1a) ∧ (n2b < n2a ∨ ((n2b = n2a) ∧ n3b < n3a)))` >- (
   Cases_on `n1b = n1a` >> srw_tac [][] >- (
     Cases_on `n2b = n2a` >> srw_tac [][] >- (
       UNABBREV_ALL_TAC >>
@@ -252,8 +265,6 @@ full_simp_tac pure_ss [alga1_cases] >- (
   first_x_assum match_mp_tac >>
   srw_tac [][] )
 >- (
-  srw_tac [][inv_image_def,LEX_DEF,Abbr`f`] >>
-  Q.MATCH_ABBREV_TAC `n1b < n1a ∨ ((n1b = n1a) ∧ (n2b < n2a ∨ ((n2b = n2a) ∧ n3b < n3a)))` >>
   Cases_on `n1b = n1a` >> srw_tac [][] >- (
     DISJ2_TAC >>
     conj_tac >- (
@@ -278,5 +289,43 @@ full_simp_tac pure_ss [alga1_cases] >- (
   srw_tac [][Abbr`s2`,SUBSET_DEF] >>
   srw_tac [][] )
 >- (
+  full_simp_tac (srw_ss()) [term_red_cases] >>
+  srw_tac [][] >>
+  Cases_on `n1b = n1a` >> srw_tac [][] >- (
+    DISJ1_TAC >>
+    UNABBREV_ALL_TAC >>
+    Q.MATCH_ABBREV_TAC `SIGMA fu (s UNION t) < SIGMA fu eqs1` >>
+    `FINITE t` by metis_tac [FINITE_LIST_TO_SET] >>
+    `FINITE s` by srw_tac [][Abbr`s`,FINITE_DELETE] >>
+    `SIGMA fu s = SIGMA fu eqs1 - fu (App f xs, App f ys)` by srw_tac [][Abbr`s`, SUM_IMAGE_DELETE] >>
+    `fu (App f xs, App f ys) <= SIGMA fu eqs1` by metis_tac [SUM_IMAGE_IN_LE] >>
+    `SIGMA fu t < fu (App f xs, App f ys)` by (
+      UNABBREV_ALL_TAC >>
+      full_simp_tac (srw_ss()++ARITH_ss) [] >>
+      match_mp_tac LESS_EQ_LESS_TRANS >>
+      qexists_tac `SUM (MAP fsym_counteq (ZIP (xs,ys)))` >>
+      srw_tac [ARITH_ss][SUM_IMAGE_LIST_TO_SET] >>
+      Q.MATCH_ABBREV_TAC `A < B + (C + 2)` >>
+      `A = B + C` by (
+        UNABBREV_ALL_TAC >>
+        match_mp_tac SUM_MAP_ZIP >>
+        srw_tac [][] ) >>
+      DECIDE_TAC ) >>
+    srw_tac [ARITH_ss][SUM_IMAGE_UNION] ) >>
+  UNABBREV_ALL_TAC >>
+  match_mp_tac CARD_PSUBSET_match >>
+  conj_tac >- (
+    match_mp_tac SUBSET_FINITE_match >>
+    qexists_tac `BIGUNION (IMAGE varseq eqs1)` >>
+    srw_tac [][] >> srw_tac [][] ) >>
+  Q.MATCH_ABBREV_TAC `s1 PSUBSET s2` >>
+  `s1 <> s2` by metis_tac [] >>
+  `!x eq. x IN varseq eq /\ MEM eq (ZIP (xs,ys)) ==> x IN varseq (App f xs, App f ys)` by (
+    srw_tac [][MEM_ZIP] >>
+    full_simp_tac (srw_ss()) [MEM_MAP,MEM_EL] >>
+    metis_tac [] ) >>
+  UNABBREV_ALL_TAC >>
+  srw_tac [][PSUBSET_DEF,SUBSET_DEF] >>
+  metis_tac [PAIR_EQ,term_distinct] ) >>
 
 val _ = export_theory ();

@@ -45,7 +45,7 @@ val _ = export_rewrites ["FINITE_vars"];
 (*val fsym_count_def = Define*)
 val fsym_count_def = TotalDefn.tDefine "fsym_count"`
   (fsym_count (Var x) = 0) ∧
-  (fsym_count (App f ts) = SUC (SUM (MAP fsym_count ts)))`
+  (fsym_count (App f ts) = 1 + (SUM (MAP fsym_count ts)))`
 (metis_tac [subterms_smaller,prim_recTheory.WF_measure]);
 val _ = export_rewrites ["fsym_count_def"];
 
