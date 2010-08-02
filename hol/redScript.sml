@@ -11,11 +11,11 @@ val _ = type_abbrev("equation", ``:('a,'b) term # ('a,'b) term``);
 
 val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
   (LENGTH xs = LENGTH ys) ∧ (App f xs, App f ys) ∈ eqs
-  ⇒ term_red eqs (eqs DELETE (App f xs, App f ys) ∪ (set (ZIP (xs,ys))))`;
+  ⇒ term_red eqs (App f xs, App f ys) (eqs DELETE (App f xs, App f ys) ∪ (set (ZIP (xs,ys))))`;
 
 val (var_elim_rules,var_elim_ind,var_elim_cases) = Hol_reln`
   (Var x, t) ∈ eqs
-  ⇒ var_elim eqs
+  ⇒ var_elim eqs ((Var x, t):('a,'b) equation)
    ((Var x, t) INSERT (IMAGE (λ(t1,t2). (SAPPLY (FEMPTY|+(x,t)) t1, SAPPLY (FEMPTY|+(x,t)) t2))
                              (eqs DELETE (Var x, t))))`;
 
@@ -32,7 +32,7 @@ srw_tac [][Abbr`t1`,Abbr`t2`]);
 
 val term_red_sound = Q.store_thm( (* half of Theorem 2.1 *)
 "term_red_sound",
-`term_red eqs1 eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
+`term_red eqs1 eq eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
 srw_tac [][term_red_cases] >>
 srw_tac [][set_unifier_def,EXTENSION,EQ_IMP_THM] >>
 full_simp_tac (srw_ss()) [] >>
@@ -79,7 +79,7 @@ full_simp_tac (srw_ss()) [rich_listTheory.MAP_EQ_f,rich_listTheory.MAP_MAP_o,EVE
 
 val var_elim_sound = Q.store_thm( (* half of Theorem 2.2 *)
 "var_elim_sound",
-`var_elim eqs1 eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
+`var_elim eqs1 eq eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
 srw_tac [][var_elim_cases] >>
 srw_tac [][set_unifier_def,EXTENSION,EQ_IMP_THM] >>
 full_simp_tac (srw_ss()) [EXISTS_PROD] >- (
