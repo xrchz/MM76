@@ -8,6 +8,15 @@ val _ = Hol_datatype`term =
 val term_size_def = definition "term_size_def";
 val term_induction = theorem "term_induction";
 
+val term_ind = Q.store_thm(
+"term_ind",
+`∀P. (∀v. P (Var v)) ∧
+     (∀f ts. EVERY P ts ⇒ P (App f ts))
+     ⇒ ∀t. P t`,
+gen_tac >>
+Q.SPECL_THEN [`P`,`EVERY P`] mp_tac term_induction >>
+srw_tac [][]);
+
 val subterms_smaller = Q.store_thm(
 "subterms_smaller",
 `∀ts t. MEM t ts ⇒ measure (term_size f1 f2) t (App f ts)`,
@@ -23,14 +32,22 @@ val vars_def = TotalDefn.tDefine "vars"`
 (metis_tac [subterms_smaller,prim_recTheory.WF_measure]);
 val _ = export_rewrites ["vars_def"];
 
-val term_ind = Q.store_thm(
-"term_ind",
-`∀P. (∀v. P (Var v)) ∧
-     (∀f ts. EVERY P ts ⇒ P (App f ts))
-     ⇒ ∀t. P t`,
-gen_tac >>
-Q.SPECL_THEN [`P`,`EVERY P`] mp_tac term_induction >>
-srw_tac [][]);
+val FINITE_vars = Q.store_thm(
+"FINITE_vars",
+`FINITE (vars t)`,
+Q.ID_SPEC_TAC `t` >>
+ho_match_mp_tac term_ind >>
+srw_tac [][EVERY_MEM,MEM_MAP] >>
+first_x_assum match_mp_tac >>
+asm_simp_tac pure_ss []);
+val _ = export_rewrites ["FINITE_vars"];
+
+(*val fsym_count_def = Define*)
+val fsym_count_def = TotalDefn.tDefine "fsym_count"`
+  (fsym_count (Var x) = 0) ∧
+  (fsym_count (App f ts) = SUC (SUM (MAP fsym_count ts)))`
+(metis_tac [subterms_smaller,prim_recTheory.WF_measure]);
+val _ = export_rewrites ["fsym_count_def"];
 
 val (psubterm_rules,psubterm_ind,psubterm_cases) = Hol_reln`
   (MEM t ts ⇒ psubterm t (App f ts))`;
