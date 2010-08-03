@@ -530,19 +530,19 @@ val alga_fail_def = Define`
                                (f ≠ g ∨ LENGTH xs ≠ LENGTH ys)) ∨
                   (∃x t. (Var x, t) ∈ eqs ∧ x ∈ vars t)`;
 
-val alga_stop_success_def = Define`
-  alga_stop_success eqs1 eqs2 =
-    FINITE eqs1 ∧
-    alga1^* eqs1 eqs2 ∧
-    ¬ alga_fail eqs2 ∧
-    ∀eqs3. ¬ alga1 eqs2 eqs3`;
+val alga_stop_def = Define`
+  alga_stop eqs1 eqs2 = FINITE eqs1 ∧ alga1^* eqs1 eqs2 ∧ ∀eqs3. ¬alga1 eqs2 eqs3`;
 
-val alga_sound = Q.store_thm( (* Half of Theorem 2.3 b *)
+val alga_preserves_unifiers = Q.store_thm(
+"alga_preserves_unifiers",
+`alga_stop eqs1 eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
+srw_tac [][alga_stop_def] >>
+metis_tac [RTC_lifts_equalities, alga1_sound]);
+
+val alga_sound = Q.store_thm( (* Half of Theorem 2.3 b (given alga_preserves_unifiers) *)
 "alga_sound",
-`alga_stop_success eqs1 eqs2 ⇒
- (set_unifier eqs1 = set_unifier eqs2) ∧ solved_form eqs2`,
-srw_tac [][alga_stop_success_def] >-
-  metis_tac [RTC_lifts_equalities, alga1_sound] >>
+`alga_stop eqs1 eqs2 ∧ ¬alga_fail eqs2 ⇒ solved_form eqs2`,
+srw_tac [][alga_stop_def] >>
 `FINITE eqs2` by
   metis_tac [RTC_CASES2, alga1_FINITE] >>
 srw_tac [][solved_form_def] >>
