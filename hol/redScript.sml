@@ -2,11 +2,6 @@ open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listT
 
 val _ = new_theory "red";
 
-val FLOOKUP_FUN_FMAP = Q.store_thm(
-"FLOOKUP_FUN_FMAP",
-`FINITE P ⇒ (FLOOKUP (FUN_FMAP f P) k = if k ∈ P then SOME (f k) else NONE)`,
-srw_tac [][FUN_FMAP_DEF,FLOOKUP_DEF]);
-
 val _ = type_abbrev("equation", ``:('a,'b) term # ('a,'b) term``);
 
 val SAPPLYeq_def = Define`
