@@ -17,6 +17,27 @@ gen_tac >>
 Q.SPECL_THEN [`P`,`EVERY P`] mp_tac term_induction >>
 srw_tac [][]);
 
+val term_ax' = store_thm(
+  "term_ax'",
+  ``∀vf af. ∃h:(α,β)term -> γ.
+      (∀v. h (Var v) = vf v) ∧
+      (∀f ts. h (App f ts) = af f ts (MAP h ts))``,
+  rpt gen_tac >>
+  ASSUME_TAC (INST_TYPE [delta |-> ``:γ list``] (theorem "term_Axiom")) >>
+  POP_ASSUM (Q.SPECL_THEN [`vf`, `af`, `[]`, `λt ts g glist. g::glist`]
+                           MP_TAC) >> strip_tac >>
+  qexists_tac `fn0` >> srw_tac [][] >>
+  qsuff_tac `∀ts. fn1 ts = MAP fn0 ts` >- srw_tac [][] >>
+  Induct >> srw_tac [][])
+
+val vars_def = new_recursive_definition {
+  def = ``(vars (Var x) = {x}) ∧
+          (vars (App f ts) = BIGUNION (set (MAP vars ts)))``,
+  name = "vars_def",
+  rec_axiom = term_ax'
+};
+val _ = export_rewrites ["vars_def"];
+
 val subterms_smaller = Q.store_thm(
 "subterms_smaller",
 `∀ts t. MEM t ts ⇒ measure (term_size f1 f2) t (App f ts)`,
@@ -25,28 +46,20 @@ full_simp_tac (srw_ss()++ARITH_ss)
   [prim_recTheory.measure_thm,term_size_def] >>
 res_tac >> DECIDE_TAC);
 
-(*val vars_def = Define*)
-val vars_def = TotalDefn.tDefine "vars"`
-  (vars (Var x) = {x}) ∧
-  (vars (App f ts) = BIGUNION (set (MAP vars ts)))`
-(metis_tac [subterms_smaller,prim_recTheory.WF_measure]);
-val _ = export_rewrites ["vars_def"];
-
 val FINITE_vars = Q.store_thm(
 "FINITE_vars",
 `FINITE (vars t)`,
 Q.ID_SPEC_TAC `t` >>
 ho_match_mp_tac term_ind >>
 srw_tac [][EVERY_MEM,MEM_MAP] >>
-first_x_assum match_mp_tac >>
-asm_simp_tac pure_ss []);
+srw_tac [][]);
 val _ = export_rewrites ["FINITE_vars"];
 
-(*val fsym_count_def = Define*)
-val fsym_count_def = TotalDefn.tDefine "fsym_count"`
-  (fsym_count (Var x) = 0) ∧
-  (fsym_count (App f ts) = 1 + (SUM (MAP fsym_count ts)))`
-(metis_tac [subterms_smaller,prim_recTheory.WF_measure]);
+val fsym_count_def = new_recursive_definition {
+  name = "fsym_count_def",
+  def = ``(fsym_count (Var x) = 0) ∧
+          (fsym_count (App f ts) = 1 + (SUM (MAP fsym_count ts)))``,
+  rec_axiom = term_ax'}
 val _ = export_rewrites ["fsym_count_def"];
 
 val (psubterm_rules,psubterm_ind,psubterm_cases) = Hol_reln`
@@ -69,24 +82,23 @@ srw_tac [][MEM_MAP] >>
 qexists_tac `vars u` >> srw_tac [][] >>
 qexists_tac `u` >> srw_tac [][]);
 
+val RTC_psubterm_thm = store_thm(
+  "RTC_psubterm_thm",
+  ``(psubterm^* x (Var v) ⇔ (x = Var v))  ∧
+    (psubterm^* x (App f ts) ⇔
+       (x = App f ts) ∨ ∃t. MEM t ts ∧ psubterm^* x t)``,
+  conj_tac >> srw_tac [][Once RTC_CASES2, psubterm_cases, SimpLHS] >>
+  metis_tac []);
+val _ = export_rewrites ["RTC_psubterm_thm"]
+
 val vars_RTC_psubterm = Q.store_thm(
 "vars_RTC_psubterm",
 `v ∈ vars t ⇔ psubterm^* (Var v) t`,
 Q.ID_SPEC_TAC `t` >>
 ho_match_mp_tac term_ind >>
-srw_tac [][EQ_IMP_THM] >- (
-  full_simp_tac (srw_ss()) [Once RTC_CASES2,psubterm_cases] )
->- (
-  full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM] >>
-  srw_tac [][] >>
-  `psubterm a (App f ts)` by (
-    srw_tac [][psubterm_cases] ) >>
-  metis_tac [RTC_RULES_RIGHT1] ) >>
-full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM] >>
-full_simp_tac (srw_ss()) [Once RTC_CASES2] >>
-full_simp_tac (srw_ss()) [psubterm_cases] >>
-res_tac >>
-full_simp_tac (srw_ss()) [] >> srw_tac [][] >>
+conj_tac >- srw_tac [][] >>
+map_every qx_gen_tac [`f`, `ts`] >>
+simp_tac (srw_ss() ++ boolSimps.DNF_ss) [MEM_MAP,EVERY_MEM] >>
 metis_tac []);
 
 val WF_psubterm = Q.store_thm(
