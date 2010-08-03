@@ -26,4 +26,7 @@ Q.GEN `f` |> Q.ISPEC `SAPPLY s` |>
 Q.GEN `R` |> Q.ISPEC `psubterm` |>
 C MATCH_MP psubterm_mono_SAPPLY);
 
+val rangevars_def = Define`
+  rangevars s = BIGUNION (IMAGE vars (FRANGE s))`;
+
 val _ = export_theory ();

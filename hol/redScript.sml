@@ -201,6 +201,48 @@ val SUM_MAP_ZIP = Q.store_thm(
 MAP_EVERY Q.ID_SPEC_TAC [`ls2`,`ls1`] >>
 Induct >> Cases_on `ls2` >> srw_tac [ARITH_ss][]);
 
+val var_elim_elim = Q.store_thm(
+"var_elim_elim",
+`x NOTIN vars t ==> !u. x NOTIN vars (SAPPLY (FEMPTY |+ (x,t)) u)`,
+strip_tac >>
+ho_match_mp_tac term_ind >>
+srw_tac [][FLOOKUP_UPDATE] >>
+srw_tac [][MEM_MAP] >>
+full_simp_tac (srw_ss()) [EVERY_MEM] >>
+metis_tac []);
+
+val NOTIN_rangevars_IN_vars = Q.store_thm(
+"NOTIN_rangevars_IN_vars",
+`!t v s. v IN vars (SAPPLY s t) /\ v NOTIN rangevars s ==> v IN vars t`,
+ho_match_mp_tac term_ind >>
+srw_tac [][rangevars_def] >- (
+  Cases_on `FLOOKUP s v` >>
+  full_simp_tac (srw_ss()) [FLOOKUP_DEF,FRANGE_DEF] >>
+  metis_tac [] ) >>
+full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,FRANGE_DEF] >>
+metis_tac []);
+
+val NOTIN_FDOM_IN_vars = Q.store_thm(
+"NOTIN_FDOM_IN_vars",
+`!t v s. v IN vars t /\ v NOTIN FDOM s ==> v IN vars (SAPPLY s t)`,
+ho_match_mp_tac term_ind >>
+srw_tac [][] >- (
+  Cases_on `FLOOKUP s v` >>
+  full_simp_tac (srw_ss()) [FLOOKUP_DEF] ) >>
+full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM] >>
+metis_tac []);
+
+val IN_FDOM_NOTIN_rangevars = Q.store_thm(
+"IN_FDOM_NOTIN_rangevars",
+`!t v s. v IN FDOM s /\ v NOTIN rangevars s ==> v NOTIN vars (SAPPLY s t)`,
+ho_match_mp_tac term_ind >>
+srw_tac [][rangevars_def] >- (
+  Cases_on `FLOOKUP s v` >>
+  full_simp_tac (srw_ss()) [FLOOKUP_DEF,FRANGE_DEF] >>
+  metis_tac [] ) >>
+full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,FRANGE_DEF] >>
+metis_tac []);
+
 val WF_alga1 = Q.store_thm( (* Theorem 2.3 a *)
 "WF_alga1",
 `WF (inv alga1)`,
@@ -330,5 +372,114 @@ Q.MATCH_ABBREV_TAC `n1b < n1a ∨ ((n1b = n1a) ∧ (n2b < n2a ∨ ((n2b = n2a) �
   UNABBREV_ALL_TAC >>
   srw_tac [][PSUBSET_DEF,SUBSET_DEF] >>
   metis_tac [PAIR_EQ,term_distinct] ) >>
+DISJ1_TAC >>
+UNABBREV_ALL_TAC >>
+match_mp_tac CARD_PSUBSET_match >>
+conj_tac >- (
+  match_mp_tac SUBSET_FINITE_match >>
+  qexists_tac `BIGUNION (IMAGE varseq eqs1)` >>
+  srw_tac [][] >> srw_tac [][] ) >>
+simp_tac bool_ss [] >>
+Q.MATCH_ABBREV_TAC `s1 DIFF s2 PSUBSET s3 DIFF s4` >>
+`s1 = s3` by (
+  UNABBREV_ALL_TAC >>
+  full_simp_tac (srw_ss()) [var_elim_cases] >>
+  simp_tac pure_ss [EXTENSION] >>
+  strip_tac >>
+  EQ_TAC >- (
+    strip_tac >>
+    full_simp_tac (srw_ss()) [] >- (
+      qexists_tac `varseq (Var x, t)` >> srw_tac [][] >>
+      qexists_tac `(Var x, t)` >> srw_tac [][] )
+    >- (
+      qexists_tac `varseq (Var x, t)` >> srw_tac [][] >>
+      qexists_tac `(Var x, t)` >> srw_tac [][] )
+    >- (
+      Q.MATCH_ASSUM_RENAME_TAC `eq' IN eqs1` [] >>
+      Cases_on `x' IN vars t` >- (
+        qexists_tac `varseq (Var x, t)` >> srw_tac [][] >>
+        qexists_tac `(Var x, t)` >> srw_tac [][] ) >>
+      qexists_tac `varseq eq'` >>
+      REVERSE (srw_tac [][]) >- metis_tac [] >>
+      Q.PAT_ASSUM `eq' <> (X,Y)` (K ALL_TAC) >>
+      Cases_on `eq'` >> full_simp_tac (srw_ss()) [] >| [
+        DISJ1_TAC, DISJ2_TAC ] >>
+      match_mp_tac NOTIN_rangevars_IN_vars >>
+      qexists_tac `FEMPTY |+ (x,t)` >>
+      srw_tac [][rangevars_def,FRANGE_DEF] )) >>
+    srw_tac [][] >>
+    Cases_on `x=x'` >> srw_tac [][] >>
+    Cases_on `x' IN vars t` >> srw_tac [][] >>
+    Q.MATCH_ASSUM_RENAME_TAC `eq' IN eqs1` [] >>
+    Cases_on `eq' = (Var x, t)` >> srw_tac [][] >>
+    full_simp_tac (srw_ss()) [] >>
+    qexists_tac `varseq (SAPPLYeq (FEMPTY |+ (x,t)) eq')` >>
+    REVERSE conj_tac >- (
+      qexists_tac `SAPPLYeq (FEMPTY |+ (x,t)) eq'` >> srw_tac [][] >>
+      qexists_tac `eq'` >> srw_tac [][] ) >>
+    Q.PAT_ASSUM `eq' <> (X,Y)` (K ALL_TAC) >>
+    Cases_on `eq'` >> full_simp_tac (srw_ss()) [] >| [
+      DISJ1_TAC, DISJ2_TAC ] >>
+    match_mp_tac NOTIN_FDOM_IN_vars >> srw_tac [][] ) >>
+full_simp_tac (srw_ss()) [] >> srw_tac [][] >>
+`s2 SUBSET s1` by (
+  UNABBREV_ALL_TAC >>
+  srw_tac [][SUBSET_DEF] >>
+  qexists_tac `varseq (Var x',t')` >> srw_tac [][] >>
+  qexists_tac `(Var x',t')` >> srw_tac [][] ) >>
+qsuff_tac `s4 PSUBSET s2` >- (
+  srw_tac [][PSUBSET_DEF,SUBSET_DEF,NOT_EQUAL_SETS] >>
+  full_simp_tac (srw_ss()) [SUBSET_DEF] >>
+  metis_tac [] ) >>
+REVERSE (srw_tac [][PSUBSET_DEF]) >- (
+  srw_tac [][NOT_EQUAL_SETS] >>
+  qexists_tac `x` >>
+  `x NOTIN s4` by (
+    UNABBREV_ALL_TAC >> srw_tac [][] >>
+    Cases_on `eq = (Var x, t')` >> srw_tac [][] >- (
+      qexists_tac `(Var x, t)` >> srw_tac [][] >>
+      full_simp_tac (srw_ss()) [var_elim_cases] ) >>
+    DISJ2_TAC >>
+    qexists_tac `eq` >> srw_tac [][] ) >>
+  srw_tac [][] >>
+  UNABBREV_ALL_TAC >>
+  srw_tac [][] >>
+  qexists_tac `t` >>
+  full_simp_tac (srw_ss()) [var_elim_cases] >>
+  srw_tac [][] >>
+  Q.MATCH_ASSUM_RENAME_TAC `eq' IN eqs1` [] >>
+  Cases_on `eq'` >>
+  Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) IN eqs1` [] >>
+  (IN_FDOM_NOTIN_rangevars |> Q.SPECL_THEN [`t1`,`x`,`FEMPTY|+(x,t)`] MP_TAC) >>
+  (IN_FDOM_NOTIN_rangevars |> Q.SPECL_THEN [`t2`,`x`,`FEMPTY|+(x,t)`] MP_TAC) >>
+  srw_tac [][rangevars_def] >>
+  full_simp_tac (srw_ss()) [] ) >>
+UNABBREV_ALL_TAC >>
+srw_tac [][SUBSET_DEF] >>
+full_simp_tac (srw_ss()) [var_elim_cases] >>
+srw_tac [][] >>
+Cases_on `x=x'` >> srw_tac [][] >- (
+  qexists_tac `t` >> srw_tac [][] >> full_simp_tac (srw_ss()) [] >>
+  Q.MATCH_ASSUM_RENAME_TAC `eq' IN eqs1` [] >>
+  Cases_on `eq'` >>
+  Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) IN eqs1` [] >>
+  (IN_FDOM_NOTIN_rangevars |> Q.SPECL_THEN [`t1`,`x`,`FEMPTY|+(x,t)`] MP_TAC) >>
+  (IN_FDOM_NOTIN_rangevars |> Q.SPECL_THEN [`t2`,`x`,`FEMPTY|+(x,t)`] MP_TAC) >>
+  srw_tac [][rangevars_def] >> full_simp_tac (srw_ss()) [] ) >>
+qexists_tac `SAPPLY (FEMPTY|+(x,t)) t'` >> srw_tac [][] >- (
+  qexists_tac `(Var x',t')` >> srw_tac [][FLOOKUP_UPDATE] )
+>- (
+  FIRST_X_ASSUM (Q.SPEC_THEN `(Var x,t)` MP_TAC) >>
+  srw_tac [][] ) >>
+Cases_on `x' IN vars t` >- (
+  FIRST_X_ASSUM (Q.SPEC_THEN `(Var x,t)` MP_TAC) >>
+  srw_tac [][] ) >>
+Q.MATCH_ASSUM_RENAME_TAC `eq' IN eqs1` [] >>
+Cases_on `eq'` >>
+Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) IN eqs1` [] >>
+(NOTIN_rangevars_IN_vars |> Q.SPECL_THEN [`t1`,`x'`,`FEMPTY|+(x,t)`] MP_TAC) >>
+(NOTIN_rangevars_IN_vars |> Q.SPECL_THEN [`t2`,`x'`,`FEMPTY|+(x,t)`] MP_TAC) >>
+FIRST_X_ASSUM (Q.SPEC_THEN `(t1,t2)` mp_tac) >>
+srw_tac [][rangevars_def] >> full_simp_tac (srw_ss()) [FLOOKUP_UPDATE]);
 
 val _ = export_theory ();
