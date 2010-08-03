@@ -528,7 +528,7 @@ srw_tac [][alga1_cases] >> srw_tac [][] >| [
 val alga_fail_def = Define`
   alga_fail eqs = (∃f xs g ys. (App f xs, App g ys) ∈ eqs ∧
                                (f ≠ g ∨ LENGTH xs ≠ LENGTH ys)) ∨
-                  (∃x t. (Var x, t) ∈ eqs ∧ x ∈ vars t)`;
+                  (∃x t. (Var x, t) ∈ eqs ∧ x ∈ vars t ∧ t ≠ Var x)`;
 
 val alga_stop_def = Define`
   alga_stop eqs1 eqs2 = FINITE eqs1 ∧ alga1^* eqs1 eqs2 ∧ ∀eqs3. ¬alga1 eqs2 eqs3`;
@@ -571,8 +571,14 @@ srw_tac [][solved_form_def] >>
     srw_tac [][] ) >>
   metis_tac [alga_fail_def] ) >>
 res_tac >>
-srw_tac [][] >-
-metis_tac [alga_fail_def] >>
+srw_tac [][] >- (
+  REVERSE (Cases_on `t = Var v`) >-
+    metis_tac [alga_fail_def] >>
+  full_simp_tac (srw_ss()) [alga1_cases] >>
+  first_x_assum (Q.SPEC_THEN `eqs2 DELETE (Var v, Var v)` mp_tac) >>
+  srw_tac [][] >>
+  DISJ2_TAC >> DISJ1_TAC >>
+  qexists_tac `v` >> srw_tac [][]) >>
 Q.MATCH_RENAME_TAC `v ∉ varseq eq` [] >>
 `∃w u. eq = (Var w, u)` by ( res_tac >> srw_tac [SATISFY_ss][] ) >>
 full_simp_tac bool_ss [alga1_cases,var_elim_cases] >>
