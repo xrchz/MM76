@@ -9,6 +9,10 @@ srw_tac [][FUN_FMAP_DEF,FLOOKUP_DEF]);
 
 val _ = type_abbrev("equation", ``:('a,'b) term # ('a,'b) term``);
 
+val SAPPLYeq_def = Define`
+  SAPPLYeq s (t1,t2) = (SAPPLY s t1, SAPPLY s t2)`;
+val _ = export_rewrites ["SAPPLYeq_def"];
+
 val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
   (LENGTH xs = LENGTH ys) ∧ (App f xs, App f ys) ∈ eqs
   ⇒ term_red eqs (App f xs, App f ys) (eqs DELETE (App f xs, App f ys) ∪ (set (ZIP (xs,ys))))`;
@@ -16,8 +20,7 @@ val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
 val (var_elim_rules,var_elim_ind,var_elim_cases) = Hol_reln`
   (Var x, t) ∈ eqs
   ⇒ var_elim eqs ((Var x, t):('a,'b) equation)
-   ((Var x, t) INSERT (IMAGE (λ(t1,t2). (SAPPLY (FEMPTY|+(x,t)) t1, SAPPLY (FEMPTY|+(x,t)) t2))
-                             (eqs DELETE (Var x, t))))`;
+   ((Var x, t) INSERT (IMAGE (SAPPLYeq (FEMPTY |+ (x,t))) (eqs DELETE (Var x, t))))`;
 
 val set_unifier_def = Define`
   set_unifier eqs = {s | ∀t1 t2. (t1,t2) ∈ eqs ⇒ (SAPPLY s t1 = SAPPLY s t2)}`;
