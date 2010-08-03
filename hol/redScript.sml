@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory arithmeticTheory lcsymtacs;
+open HolKernel boolLib bossLib SatisfySimps Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory arithmeticTheory lcsymtacs;
 
 val _ = new_theory "red";
 
@@ -42,6 +42,11 @@ REVERSE (Cases_on `(t1,t2) = (App f xs, App f ys)`) >>
 full_simp_tac (srw_ss()) [MEM_ZIP] >>
 srw_tac [][LIST_EQ_REWRITE,rich_listTheory.EL_MAP] >>
 metis_tac []);
+
+val term_red_FINITE = Q.store_thm(
+"term_red_FINITE",
+`∀eq. term_red eqs1 eq eqs2 ∧ FINITE eqs1 ⇒ FINITE eqs2`,
+srw_tac [][term_red_cases] >> srw_tac [][]);
 
 val TC_psubterm_neq = Q.store_thm(
 "TC_psubterm_neq",
@@ -97,6 +102,11 @@ srw_tac [][] >>
 FIRST_X_ASSUM (Q.SPECL_THEN [`SAPPLY (FEMPTY |+ (x,t)) t1`, `SAPPLY (FEMPTY |+ (x,t)) t2`] MP_TAC) >>
 srw_tac [][] >>
 metis_tac []);
+
+val var_elim_FINITE = Q.store_thm(
+"var_elim_FINITE",
+`∀eq. var_elim eqs1 eq eqs2 ∧ FINITE eqs1 ⇒ FINITE eqs2`,
+srw_tac [][var_elim_cases] >> srw_tac [][]);
 
 val varseq_def = Define`
   varseq (t1, t2) = vars t1 ∪ vars t2`;
@@ -159,7 +169,7 @@ Q.MATCH_ABBREV_TAC `FUN_FMAP f P ∈ set_unifier eqs` >>
 `FINITE P` by metis_tac [FINITE_eqsvdom] >>
 srw_tac [][set_unifier_def] >>
 `∃v. t1 = Var v` by metis_tac [solved_form_def, PAIR_EQ] >>
-`v ∈ P` by srw_tac [SatisfySimps.SATISFY_ss][Abbr`P`,eqsvdom_def] >>
+`v ∈ P` by srw_tac [SATISFY_ss][Abbr`P`,eqsvdom_def] >>
 srw_tac [][FLOOKUP_FUN_FMAP] >>
 `f v = t2` by (srw_tac [][Abbr`f`] >> SELECT_ELIM_TAC >>
                metis_tac [solved_form_functional]) >>
@@ -168,7 +178,7 @@ qsuff_tac `DISJOINT (FDOM (FUN_FMAP f P)) (vars t2)`
 asm_simp_tac (srw_ss())[FUN_FMAP_DEF, DISJOINT_DEF, EXTENSION] >>
 qx_gen_tac `w` >> Cases_on `w ∈ P` >> asm_simp_tac (srw_ss()) [] >>
 `∃t. (Var w,t) ∈ eqs`
-  by full_simp_tac (srw_ss() ++ SatisfySimps.SATISFY_ss)
+  by full_simp_tac (srw_ss() ++ SATISFY_ss)
                    [Abbr`P`, eqsvdom_def] >>
 `v ∉ vars t2` by metis_tac [solved_form_def, PAIR_EQ, term_11] >>
 full_simp_tac (srw_ss()) [solved_form_def] >>
@@ -494,5 +504,87 @@ Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) IN eqs1` [] >>
 (NOTIN_rangevars_IN_vars |> Q.SPECL_THEN [`t2`,`x'`,`FEMPTY|+(x,t)`] MP_TAC) >>
 FIRST_X_ASSUM (Q.SPEC_THEN `(t1,t2)` mp_tac) >>
 srw_tac [][rangevars_def] >> full_simp_tac (srw_ss()) [FLOOKUP_UPDATE]);
+
+val alga1_sound = Q.store_thm(
+"alga1_sound",
+`alga1 eqs1 eqs2 ⇒ (set_unifier eqs1 = set_unifier eqs2)`,
+srw_tac [][alga1_cases]
+>- ( srw_tac [][set_unifier_def,EXTENSION] >> metis_tac [] )
+>- ( srw_tac [][set_unifier_def,EXTENSION] >> metis_tac [] )
+>- ( match_mp_tac term_red_sound >> asm_simp_tac pure_ss [] )
+>- ( match_mp_tac (GEN_ALL var_elim_sound) >> asm_simp_tac (pure_ss ++ SATISFY_ss) [] ));
+
+val alga1_FINITE = Q.store_thm(
+"alga1_FINITE",
+`alga1 eqs1 eqs2 ⇒ FINITE eqs1 ∧ FINITE eqs2`,
+srw_tac [][alga1_cases] >> srw_tac [][] >| [
+  match_mp_tac term_red_FINITE,
+  match_mp_tac var_elim_FINITE
+] >> srw_tac [SATISFY_ss][] );
+
+(* We diverge slightly from the text below by
+   requiring Algorithm A to check that the same function symbol
+   is always applied to the same number of arguments. *)
+val alga_fail_def = Define`
+  alga_fail eqs = (∃f xs g ys. (App f xs, App g ys) ∈ eqs ∧
+                               (f ≠ g ∨ LENGTH xs ≠ LENGTH ys)) ∨
+                  (∃x t. (Var x, t) ∈ eqs ∧ x ∈ vars t)`;
+
+val alga_stop_success_def = Define`
+  alga_stop_success eqs1 eqs2 =
+    FINITE eqs1 ∧
+    alga1^* eqs1 eqs2 ∧
+    ¬ alga_fail eqs2 ∧
+    ∀eqs3. ¬ alga1 eqs2 eqs3`;
+
+val alga_sound = Q.store_thm( (* Half of Theorem 2.3 b *)
+"alga_sound",
+`alga_stop_success eqs1 eqs2 ⇒
+ (set_unifier eqs1 = set_unifier eqs2) ∧ solved_form eqs2`,
+srw_tac [][alga_stop_success_def] >-
+  metis_tac [RTC_lifts_equalities, alga1_sound] >>
+`FINITE eqs2` by
+  metis_tac [RTC_CASES2, alga1_FINITE] >>
+srw_tac [][solved_form_def] >>
+`∀eq. eq ∈ eqs2 ⇒ ∃v t. (eq = (Var v, t))` by (
+  Q.PAT_ASSUM `eq ∈ eqs2` (K ALL_TAC) >>
+  srw_tac [][] >>
+  full_simp_tac bool_ss [alga1_cases,term_red_cases,var_elim_cases] >>
+  Cases_on `eq` >> srw_tac [][] >>
+  Q.MATCH_ASSUM_RENAME_TAC `(t1,t2) ∈ eqs2` [] >>
+  Cases_on `t1` >> full_simp_tac (srw_ss()) [] >>
+  Q.MATCH_ASSUM_RENAME_TAC `(App f ts,t2) ∈ eqs2` [] >>
+  Cases_on `t2` >> full_simp_tac (srw_ss()) [] >- (
+    Q.MATCH_ASSUM_RENAME_TAC `(App f ts,Var v) ∈ eqs2` [] >>
+    FIRST_X_ASSUM (Q.SPEC_THEN `(Var v, App f ts) INSERT eqs2 DELETE (App f ts, Var v)` MP_TAC) >>
+    srw_tac [][] >>
+    DISJ1_TAC >>
+    map_every qexists_tac [`App f ts`,`v`] >>
+    srw_tac [][] ) >>
+  Q.MATCH_ASSUM_RENAME_TAC `(App f xs,App g ys) ∈ eqs2` [] >>
+  Cases_on `(f = g) ∧ (LENGTH xs = LENGTH ys)` >- (
+    srw_tac [][] >>
+    FIRST_X_ASSUM (Q.SPEC_THEN `eqs2 DELETE (App f xs,App f ys) ∪ set (ZIP (xs,ys))` MP_TAC) >>
+    srw_tac [][] >>
+    DISJ2_TAC >> DISJ2_TAC >> DISJ1_TAC >>
+    map_every qexists_tac [`f`,`xs`,`ys`] >>
+    srw_tac [][] ) >>
+  metis_tac [alga_fail_def] ) >>
+res_tac >>
+srw_tac [][] >-
+metis_tac [alga_fail_def] >>
+Q.MATCH_RENAME_TAC `v ∉ varseq eq` [] >>
+`∃w u. eq = (Var w, u)` by ( res_tac >> srw_tac [SATISFY_ss][] ) >>
+full_simp_tac bool_ss [alga1_cases,var_elim_cases] >>
+asm_simp_tac (srw_ss()) [] >>
+`v ∉ vars t` by metis_tac [alga_fail_def] >>
+FIRST_X_ASSUM (Q.SPEC_THEN `(Var v, t) INSERT IMAGE (SAPPLYeq (FEMPTY |+(v,t)))
+                               (eqs2 DELETE (Var v,t))` MP_TAC) >>
+asm_simp_tac (srw_ss()) [] >>
+strip_tac >>
+first_x_assum (Q.SPECL_THEN [`t`,`v`] MP_TAC) >>
+asm_simp_tac (srw_ss()) [] >>
+disch_then (Q.SPEC_THEN `(Var w, u)` MP_TAC) >>
+srw_tac [][]);
 
 val _ = export_theory ();
