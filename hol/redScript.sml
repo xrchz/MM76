@@ -593,4 +593,18 @@ asm_simp_tac (srw_ss()) [] >>
 disch_then (Q.SPEC_THEN `(Var w, u)` MP_TAC) >>
 srw_tac [][]);
 
+val alga_complete = Q.store_thm( (* Half of Theorem 2.3 b *)
+"alga_complete",
+`alga_stop eqs1 eqs2 ∧ alga_fail eqs2 ⇒ (set_unifier eqs1 = {})`,
+srw_tac [][] >>
+imp_res_tac alga_preserves_unifiers >>
+full_simp_tac (srw_ss()) [alga_fail_def,set_unifier_def,EXTENSION] >>
+qx_gen_tac `s` >>
+Q.MATCH_ASSUM_ABBREV_TAC `(t1,t2) ∈ eqs2` >>
+map_every qexists_tac [`t1`,`t2`] >>
+UNABBREV_ALL_TAC >>
+srw_tac [][] >- metis_tac [LENGTH_MAP] >>
+imp_res_tac occurs_not_unify >>
+full_simp_tac (srw_ss()) []);
+
 val _ = export_theory ();
