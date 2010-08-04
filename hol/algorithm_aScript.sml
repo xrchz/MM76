@@ -1,12 +1,19 @@
-open HolKernel boolLib bossLib SatisfySimps Parse termTheory substTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory arithmeticTheory lcsymtacs;
+open HolKernel boolLib bossLib SatisfySimps Parse termTheory substitutionTheory equationTheory pred_setTheory listTheory relationTheory finite_mapTheory pairTheory arithmeticTheory lcsymtacs
 
-val _ = new_theory "red";
+val _ = new_theory "algorithm_a";
 
-val _ = type_abbrev("equation", ``:('a,'b) term # ('a,'b) term``);
+val SUM_IMAGE_LIST_TO_SET = Q.store_thm(
+"SUM_IMAGE_LIST_TO_SET",
+`SIGMA f (set ls) <= SUM (MAP f ls)`,
+Q.ID_SPEC_TAC `ls` >> Induct >>
+srw_tac [][SUM_IMAGE_THM,SUM_IMAGE_DELETE] >>
+DECIDE_TAC);
 
-val SAPPLYeq_def = Define`
-  SAPPLYeq s (t1,t2) = (SAPPLY s t1, SAPPLY s t2)`;
-val _ = export_rewrites ["SAPPLYeq_def"];
+val SUM_MAP_ZIP = Q.store_thm(
+"SUM_MAP_ZIP",
+`(LENGTH ls1 = LENGTH ls2) /\ (!x y. f (x,y) = g x + h y) ==>(SUM (MAP f (ZIP (ls1,ls2))) = SUM (MAP g ls1) + SUM (MAP h ls2))`,
+MAP_EVERY Q.ID_SPEC_TAC [`ls2`,`ls1`] >>
+Induct >> Cases_on `ls2` >> srw_tac [ARITH_ss][]);
 
 val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
   (LENGTH xs = LENGTH ys) ∧ (App f xs, App f ys) ∈ eqs
@@ -16,9 +23,6 @@ val (var_elim_rules,var_elim_ind,var_elim_cases) = Hol_reln`
   (Var x, t) ∈ eqs
   ⇒ var_elim eqs ((Var x, t):('a,'b) equation)
    ((Var x, t) INSERT (IMAGE (SAPPLYeq (FEMPTY |+ (x,t))) (eqs DELETE (Var x, t))))`;
-
-val set_unifier_def = Define`
-  set_unifier eqs = {s | ∀t1 t2. (t1,t2) ∈ eqs ⇒ (SAPPLY s t1 = SAPPLY s t2)}`;
 
 val distinct_heads = Q.store_thm( (* half of Theorem 2.1 *)
 "distinct_heads",
@@ -108,87 +112,6 @@ val var_elim_FINITE = Q.store_thm(
 `∀eq. var_elim eqs1 eq eqs2 ∧ FINITE eqs1 ⇒ FINITE eqs2`,
 srw_tac [][var_elim_cases] >> srw_tac [][]);
 
-val varseq_def = Define`
-  varseq (t1, t2) = vars t1 ∪ vars t2`;
-val _ = export_rewrites ["varseq_def"];
-
-val FINITE_varseq = Q.store_thm(
-"FINITE_varseq",
-`FINITE (varseq eq)`,
-Cases_on `eq` >> srw_tac [][]);
-val _ = export_rewrites ["FINITE_varseq"];
-
-val solved_form_def = Define`
-  solved_form eqs =
-    FINITE eqs ∧
-    ∀eq. eq ∈ eqs ⇒
-         ∃v t. (eq = (Var v, t)) ∧ (v ∉ vars t) ∧
-               ∀eq'. eq' ∈ eqs ∧ eq' ≠ eq ⇒ v ∉ varseq eq'`;
-
-val FDOM_DISJOINT_vars = Q.store_thm(
-"FDOM_DISJOINT_vars",
-`DISJOINT (FDOM s) (vars t) ⇒ (SAPPLY s t = t)`,
-Q.ID_SPEC_TAC `t` >>
-ho_match_mp_tac term_ind >>
-srw_tac [][IN_DISJOINT,FLOOKUP_DEF] >>
-full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,MEM_EL,LIST_EQ_REWRITE] >>
-srw_tac [][rich_listTheory.EL_MAP] >>
-metis_tac []);
-
-val eqsvdom_def = Define`eqsvdom eqs = {v | ∃t. (Var v, t) ∈ eqs}`
-
-val FINITE_eqsvdom = store_thm(
-  "FINITE_eqsvdom",
-  ``FINITE eqs ⇒ FINITE (eqsvdom eqs)``,
-  strip_tac >>
-  `eqsvdom eqs ⊆ (IMAGE (term_case I ARB o FST) eqs)` by (
-    srw_tac [][SUBSET_DEF,eqsvdom_def] >- (
-    qexists_tac `(Var x, t)` >> srw_tac [][] ) >>
-  full_simp_tac (srw_ss()) [solved_form_def] >>
-  res_tac >> srw_tac [][] >>
-  qexists_tac `t` >> asm_simp_tac pure_ss [] ) >>
-  metis_tac [SUBSET_FINITE, IMAGE_FINITE]);
-
-val solved_form_functional = store_thm(
-  "solved_form_functional",
-  ``solved_form eqs ∧ (v,t1) ∈ eqs ∧ (v,t2) ∈ eqs ⇒ (t1 = t2)``,
-  srw_tac [][solved_form_def] >>
-  first_x_assum (Q.SPEC_THEN `(v,t1)` MP_TAC) >>
-  asm_simp_tac (srw_ss()) [] >>
-  DISCH_THEN (Q.X_CHOOSE_THEN `w` STRIP_ASSUME_TAC) >>
-  first_x_assum (Q.SPEC_THEN `(v,t2)` MP_TAC) >>
-  asm_simp_tac (srw_ss()) []);
-
-val solved_form_unifier = Q.store_thm(
-"solved_form_unifier",
-`solved_form eqs ⇒
-   (FUN_FMAP (λv. @t. (Var v,t) ∈ eqs) (eqsvdom eqs)) ∈ set_unifier eqs`,
-strip_tac >>
-Q.MATCH_ABBREV_TAC `FUN_FMAP f P ∈ set_unifier eqs` >>
-`FINITE eqs` by full_simp_tac pure_ss [solved_form_def] >>
-`FINITE P` by metis_tac [FINITE_eqsvdom] >>
-srw_tac [][set_unifier_def] >>
-`∃v. t1 = Var v` by metis_tac [solved_form_def, PAIR_EQ] >>
-`v ∈ P` by srw_tac [SATISFY_ss][Abbr`P`,eqsvdom_def] >>
-srw_tac [][FLOOKUP_FUN_FMAP] >>
-`f v = t2` by (srw_tac [][Abbr`f`] >> SELECT_ELIM_TAC >>
-               metis_tac [solved_form_functional]) >>
-qsuff_tac `DISJOINT (FDOM (FUN_FMAP f P)) (vars t2)`
-  >- metis_tac [FDOM_DISJOINT_vars] >>
-asm_simp_tac (srw_ss())[FUN_FMAP_DEF, DISJOINT_DEF, EXTENSION] >>
-qx_gen_tac `w` >> Cases_on `w ∈ P` >> asm_simp_tac (srw_ss()) [] >>
-`∃t. (Var w,t) ∈ eqs`
-  by full_simp_tac (srw_ss() ++ SATISFY_ss)
-                   [Abbr`P`, eqsvdom_def] >>
-`v ∉ vars t2` by metis_tac [solved_form_def, PAIR_EQ, term_11] >>
-full_simp_tac (srw_ss()) [solved_form_def] >>
-first_x_assum (Q.SPEC_THEN `(Var w,t)` MP_TAC) >>
-srw_tac [][] >>
-first_x_assum (Q.SPEC_THEN `(Var v,f v)` MP_TAC) >>
-srw_tac [][] >> metis_tac []);
-
-(* prove the solved form unifier most general? *)
-
 (* Algorithm A *)
 val (alga1_rules,alga1_ind,alga1_cases) = Hol_reln`
   (FINITE eqs ∧ (t, Var x) ∈ eqs ∧ (∀y. t ≠ Var y) ⇒ alga1 eqs ((Var x, t) INSERT (eqs DELETE (t, Var x)))) ∧
@@ -197,10 +120,6 @@ val (alga1_rules,alga1_ind,alga1_cases) = Hol_reln`
   (FINITE eqs1 ∧ var_elim eqs1 (Var x, t) eqs2 ∧
    x ∉ vars t ∧ (∃eq. eq ∈ eqs1 ∧ eq ≠ (Var x, t) ∧ (x ∈ varseq eq))
    ⇒ alga1 eqs1 eqs2)`;
-
-val fsym_counteq_def = Define`
-  fsym_counteq (t1, t2) = fsym_count t1 + fsym_count t2`;
-val _ = export_rewrites ["fsym_counteq_def"];
 
 val swap_under_IMAGE = Q.store_thm(
 "swap_under_IMAGE",
@@ -211,19 +130,6 @@ val CARD_PSUBSET_match = (MP_CANON CARD_PSUBSET);
 val CARD_SUBSET_match = (MP_CANON CARD_SUBSET);
 val SUBSET_FINITE_match = (MP_CANON SUBSET_FINITE);
 
-val SUM_IMAGE_LIST_TO_SET = Q.store_thm(
-"SUM_IMAGE_LIST_TO_SET",
-`SIGMA f (set ls) <= SUM (MAP f ls)`,
-Q.ID_SPEC_TAC `ls` >> Induct >>
-srw_tac [][SUM_IMAGE_THM,SUM_IMAGE_DELETE] >>
-DECIDE_TAC);
-
-val SUM_MAP_ZIP = Q.store_thm(
-"SUM_MAP_ZIP",
-`(LENGTH ls1 = LENGTH ls2) /\ (!x y. f (x,y) = g x + h y) ==>(SUM (MAP f (ZIP (ls1,ls2))) = SUM (MAP g ls1) + SUM (MAP h ls2))`,
-MAP_EVERY Q.ID_SPEC_TAC [`ls2`,`ls1`] >>
-Induct >> Cases_on `ls2` >> srw_tac [ARITH_ss][]);
-
 val var_elim_elim = Q.store_thm(
 "var_elim_elim",
 `x NOTIN vars t ==> !u. x NOTIN vars (SAPPLY (FEMPTY |+ (x,t)) u)`,
@@ -232,38 +138,6 @@ ho_match_mp_tac term_ind >>
 srw_tac [][FLOOKUP_UPDATE] >>
 srw_tac [][MEM_MAP] >>
 full_simp_tac (srw_ss()) [EVERY_MEM] >>
-metis_tac []);
-
-val NOTIN_rangevars_IN_vars = Q.store_thm(
-"NOTIN_rangevars_IN_vars",
-`!t v s. v IN vars (SAPPLY s t) /\ v NOTIN rangevars s ==> v IN vars t`,
-ho_match_mp_tac term_ind >>
-srw_tac [][rangevars_def] >- (
-  Cases_on `FLOOKUP s v` >>
-  full_simp_tac (srw_ss()) [FLOOKUP_DEF,FRANGE_DEF] >>
-  metis_tac [] ) >>
-full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,FRANGE_DEF] >>
-metis_tac []);
-
-val NOTIN_FDOM_IN_vars = Q.store_thm(
-"NOTIN_FDOM_IN_vars",
-`!t v s. v IN vars t /\ v NOTIN FDOM s ==> v IN vars (SAPPLY s t)`,
-ho_match_mp_tac term_ind >>
-srw_tac [][] >- (
-  Cases_on `FLOOKUP s v` >>
-  full_simp_tac (srw_ss()) [FLOOKUP_DEF] ) >>
-full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM] >>
-metis_tac []);
-
-val IN_FDOM_NOTIN_rangevars = Q.store_thm(
-"IN_FDOM_NOTIN_rangevars",
-`!t v s. v IN FDOM s /\ v NOTIN rangevars s ==> v NOTIN vars (SAPPLY s t)`,
-ho_match_mp_tac term_ind >>
-srw_tac [][rangevars_def] >- (
-  Cases_on `FLOOKUP s v` >>
-  full_simp_tac (srw_ss()) [FLOOKUP_DEF,FRANGE_DEF] >>
-  metis_tac [] ) >>
-full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,FRANGE_DEF] >>
 metis_tac []);
 
 val WF_alga1 = Q.store_thm( (* Theorem 2.3 a *)
@@ -606,5 +480,7 @@ UNABBREV_ALL_TAC >>
 srw_tac [][] >- metis_tac [LENGTH_MAP] >>
 imp_res_tac occurs_not_unify >>
 full_simp_tac (srw_ss()) []);
+
+(* Determinize to get Algorithm R? *)
 
 val _ = export_theory ();

@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib prim_recTheory relationTheory listTheory lcsymtacs
+open HolKernel boolLib bossLib listTheory relationTheory lcsymtacs
 
 val _ = new_theory "term"
 
