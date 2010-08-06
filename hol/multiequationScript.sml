@@ -56,13 +56,13 @@ metis_tac []);
 
 val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_cases) = Hol_reln`
   (Var v <: m ⇒ common_part_frontier m (Var v, {({x | Var x <: m}, BAG_FILTER (λt. ∀x. t ≠ Var x) m)})) ∧
-  (BAG_EVERY (λt. ∃ts. (t = App f ts) ∧ (LENGTH ts = n)) m ∧
+  (BAG_EVERY (λt. ∃ts. (t = App f ts) ∧ (LENGTH ts = n)) m ∧ m ≠ {||} ∧
    (∀i. i < n ⇒ common_part_frontier (BAG_IMAGE (term_case ARB (λf ts. EL i ts)) m) (common_part i, frontier i)) ⇒
    common_part_frontier m (App f (GENLIST common_part n), BIGUNION {frontier i | i < n}))`;
 
 val unifier_implies_common_part = Q.store_thm(
 "unifier_implies_common_part",
-`FINITE_BAG m ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
+`FINITE_BAG m ∧ m ≠ {||} ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
 qidspec_tac `m` >>
 qho_match_abbrev_tac `∀m. P m ⇒ Q m` >>
 qsuff_tac `∀t m. t <: m ⇒ P m ⇒ Q m` >- (
@@ -82,7 +82,9 @@ Cases_on `?v. Var v <: m` >- metis_tac [common_part_frontier_rules] >>
   fsrw_tac [][pairTheory.EXISTS_PROD,AND_IMP_INTRO] >>
   first_x_assum match_mp_tac >>
   qexists_tac `i` >> srw_tac [][] >- (
-    qexists_tac `App f ts` >> srw_tac [][] ) >>
+    qexists_tac `App f ts` >> srw_tac [][] )
+  >- (
+    fsrw_tac [SATISFY_ss][GSYM bagTheory.MEMBER_NOT_EMPTY] ) >>
   map_every Cases_on [`y`,`y'`] >> TRY (res_tac >> fsrw_tac [][] >> NO_TAC) >>
   srw_tac [][] >>
   qmatch_rename_tac `SAPPLY s (EL i l1) = SAPPLY s (EL i l2)` [] >>
@@ -101,12 +103,12 @@ Cases_on `?v. Var v <: m` >- metis_tac [common_part_frontier_rules] >>
 metis_tac [common_part_frontier_rules]);
 
 val (meq_red_rules, meq_red_ind, meq_red_cases) = Hol_reln`
-  (s,m) ∈ meq ∧ m ≠ {||} ∧ common_part_frontier m (c,f) ⇒
+  (s,m) ∈ meqs ∧ common_part_frontier m (c,f) ⇒
   meq_red meqs ((meqs DELETE (s,m)) ∪ ((s,{|c|}) INSERT f))`;
 
 val no_common_part = Q.store_thm( (* Part of Theorem 3.1 *)
 "no_common_part",
-`FINITE_BAG m ∧ (∀cf. ¬common_part_frontier m cf) ⇒ (meq_unifier (s,m) = {})`,
+`FINITE_BAG m ∧ m ≠ {||} ∧ (∀cf. ¬common_part_frontier m cf) ⇒ (meq_unifier (s,m) = {})`,
 srw_tac [][meq_unifier_def,EXTENSION,BAG_EVERY,terms_of_def] >>
 metis_tac [unifier_implies_common_part,common_part_frontier_rules] );
 
