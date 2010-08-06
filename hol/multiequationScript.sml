@@ -112,26 +112,39 @@ val no_common_part = Q.store_thm( (* Part of Theorem 3.1 *)
 srw_tac [][meq_unifier_def,EXTENSION,BAG_EVERY,terms_of_def] >>
 metis_tac [unifier_implies_common_part,common_part_frontier_rules] );
 
-val frontier_vars_occur = Q.store_thm(
-"frontier_vars_occur",
-`∀m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ ∀meq. meq ∈ SND cf ∧ x ∈ FST meq ⇒ ∃t. t <: m ∧ x ∈ vars t`,
+val frontier_same_address = Q.store_thm(
+"frontier_same_address",
+`∀m cf. common_part_frontier m cf ⇒
+        FINITE_BAG m ⇒
+        ∀meq. meq ∈ (SND cf) ⇒
+              ∃ns. ∀u. u ∈ terms_of meq ⇒
+                       ∃t. t <: m ∧ subterm_at u ns t`,
 ho_match_mp_tac common_part_frontier_ind >>
 srw_tac [][] >- (
-  qexists_tac `Var x` >> srw_tac [][] ) >>
-fsrw_tac [boolSimps.DNF_ss][] >>
-first_x_assum (qspecl_then [`i`,`meq`] mp_tac) >>
+  qexists_tac `[]` >>
+  srw_tac [][terms_of_def] >>
+  first_assum ACCEPT_TAC ) >>
+fsrw_tac [boolSimps.DNF_ss][BAG_EVERY] >>
+first_x_assum (qspecl_then [`i`,`meq`] mp_tac) >> srw_tac [][] >>
+qexists_tac `i::ns` >> srw_tac [][] >>
+first_x_assum (qspec_then `u` mp_tac) >> srw_tac [][] >>
+res_tac >> fsrw_tac [][] >>
+metis_tac [subterm_at_rules]);
+
+val frontier_vars_occur = Q.store_thm(
+"frontier_vars_occur",
+`∀m cf meq. common_part_frontier m cf ∧ FINITE_BAG m ∧ meq ∈ SND cf ∧ x ∈ FST meq ⇒ ∃t. t <: m ∧ x ∈ vars t`,
 srw_tac [][] >>
-qexists_tac `y` >> srw_tac [][] >>
-fsrw_tac [][BAG_EVERY] >>
-first_x_assum (qspec_then `y` mp_tac) >>
-srw_tac [][] >> srw_tac [][MEM_MAP] >>
-fsrw_tac [][MEM_EL] >> metis_tac []);
+imp_res_tac frontier_same_address >>
+Cases_on `meq` >>
+fsrw_tac [][terms_of_def] >>
+metis_tac [subterm_eq_subterm_at,vars_def,IN_INSERT,NOT_IN_EMPTY,vars_subterm]);
 
 val meq_occurs_not_unify = Q.store_thm( (* Part of Theorem 3.1 *)
 "meq_occurs_not_unify",
 `wfm (s,m) ∧ x ∈ s ∧ common_part_frontier m (c,f) ∧ meq ∈ f ∧ x ∈ (FST meq) ⇒ (meq_unifier (s,m) = {})`,
 srw_tac [][wfm_def,BAG_EVERY] >>
-(frontier_vars_occur |> MP_CANON |> Q.SPECL [`m`,`(c,f)`,`meq`] |> mp_tac) >>
+(frontier_vars_occur |> Q.SPECL [`m`,`(c,f)`,`meq`] |> mp_tac) >>
 srw_tac [][] >>
 qsuff_tac `?eqs. eqs_correspond_to_meq (s,m) eqs ∧ (set_unifier eqs = {})` >-
   metis_tac [meq_unifier_corresponds_set_unifier] >>
