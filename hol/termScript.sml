@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse listTheory relationTheory lcsymtacs
+open HolKernel boolLib bossLib Parse listTheory relationTheory prim_recTheory arithmeticTheory lcsymtacs
 
 val _ = new_theory "term"
 
@@ -42,8 +42,7 @@ val subterms_smaller = Q.store_thm(
 "subterms_smaller",
 `∀ts t. MEM t ts ⇒ measure (term_size f1 f2) t (App f ts)`,
 Induct >> srw_tac [][] >>
-full_simp_tac (srw_ss()++ARITH_ss)
-  [prim_recTheory.measure_thm,term_size_def] >>
+fsrw_tac [ARITH_ss] [measure_thm,term_size_def] >>
 res_tac >> DECIDE_TAC);
 
 val FINITE_vars = Q.store_thm(
@@ -67,6 +66,28 @@ val (psubterm1_rules,psubterm1_ind,psubterm1_cases) = Hol_reln`
 
 val _ = overload_on("psubterm",``TC psubterm1``);
 val _ = overload_on("subterm",``RTC psubterm1``);
+
+val psubterm1_term_size = Q.store_thm(
+"psubterm1_term_size",
+`psubterm1 t1 t2 ⇒ measure (term_size f1 f2) t1 t2`,
+srw_tac [][psubterm1_cases] >>
+match_mp_tac subterms_smaller >>
+srw_tac [][]);
+
+val psubterm_term_size = save_thm(
+"psubterm_term_size",
+  TC_lifts_transitive_relations |>
+  let val t = `:('a,'b) term` in Q.INST_TYPE [`:'a`|->t,`:'b`|->t] end
+  |> Q.GEN `R` |> Q.SPEC `psubterm1`
+  |> Q.GEN `Q` |> Q.SPEC `measure (term_size f1 f2)`
+  |> Q.GEN `f` |> Q.SPEC `I`
+  |> SIMP_RULE std_ss [psubterm1_term_size,transitive_measure]
+  |> Q.SPECL [`t1`,`t2`]);
+
+val subterm_term_size = Q.store_thm(
+"subterm_term_size",
+`subterm t1 t2 ⇒ (term_size f1 f2 t1) ≤ (term_size f1 f2 t2)`,
+metis_tac [RTC_CASES_TC,psubterm_term_size,measure_thm,LESS_OR_EQ]);
 
 val vars_cases = Q.store_thm(
 "vars_cases",
@@ -113,5 +134,57 @@ srw_tac [][] >>
 match_mp_tac WFP_RULES >>
 srw_tac [][psubterm1_cases] >>
 full_simp_tac (srw_ss()) [EVERY_MEM]);
+
+val psubterm_irrefl = Q.store_thm(
+"psubterm_irrefl",
+`¬ psubterm t t`,
+metis_tac [WF_TC,WF_psubterm1,WF_NOT_REFL]);
+val _ = export_rewrites ["psubterm_irrefl"];
+
+val (subterm_at_rules,subterm_at_ind,subterm_at_cases) = Hol_reln`
+  (subterm_at t [] t) ∧
+  (n < LENGTH ts ∧
+   subterm_at t ns (EL n ts)
+   ⇒ subterm_at t (n::ns) (App f ts))`;
+
+val subterm_eq_subterm_at = Q.store_thm(
+"subterm_eq_subterm_at",
+`subterm t1 t2 ⇔ ∃ls. subterm_at t1 ls t2`,
+EQ_TAC >- (
+  map_every qidspec_tac [`t2`,`t1`] >>
+  ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+  srw_tac [][psubterm1_cases] >-
+    srw_tac [SatisfySimps.SATISFY_ss][subterm_at_rules] >>
+  fsrw_tac [][MEM_EL] >>
+  qexists_tac `n::ls` >>
+  srw_tac [][subterm_at_rules] ) >>
+simp_tac (bool_ss++boolSimps.DNF_ss) [] >>
+qidspec_tac `t2` >>
+simp_tac bool_ss [Once SWAP_FORALL_THM] >>
+ho_match_mp_tac subterm_at_ind >>
+srw_tac [][MEM_EL] >>
+metis_tac []);
+
+val subterm_at_nil = Q.store_thm(
+"subterm_at_nil",
+`(subterm_at t1 [] t2 ⇔ (t1 = t2)) ∧
+ (subterm_at t ls t ⇔ (ls = []))`,
+srw_tac [][EQ_IMP_THM,subterm_at_rules] >>
+fsrw_tac [][Once subterm_at_cases] >>
+imp_res_tac subterm_eq_subterm_at >>
+imp_res_tac subterm_term_size >>
+srw_tac [][] >> fsrw_tac [][] >>
+Q.ISPECL_THEN [`ts`,`EL n ts`] mp_tac subterms_smaller >>
+srw_tac [][MEM_EL,measure_thm,NOT_LESS] >>
+qexists_tac `n` >> srw_tac [][]);
+val _ = export_rewrites ["subterm_at_nil"];
+
+val psubterm_eq_subterm_at = Q.store_thm(
+"psubterm_eq_subterm_at",
+`psubterm t1 t2 ⇔ ∃n ns. subterm_at t1 (n::ns) t2`,
+ASSUME_TAC subterm_eq_subterm_at >>
+fsrw_tac [][RTC_CASES_TC] >>
+Cases_on `t1 = t2` >> fsrw_tac [][] >>
+metis_tac [NOT_NIL_CONS,subterm_at_nil,list_CASES]);
 
 val _ = export_theory ();

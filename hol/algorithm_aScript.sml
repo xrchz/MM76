@@ -52,11 +52,6 @@ val term_red_FINITE = Q.store_thm(
 `∀eq. term_red eqs1 eq eqs2 ∧ FINITE eqs1 ⇒ FINITE eqs2`,
 srw_tac [][term_red_cases] >> srw_tac [][]);
 
-val psubterm_irrefl = Q.store_thm(
-"psubterm_irrefl",
-`∀t. ¬ psubterm t t`,
-metis_tac [WF_TC,WF_psubterm1,WF_NOT_REFL]);
-
 val occurs_not_unify = Q.store_thm(
 "occurs_not_unify",
 `x ∈ vars t ∧ t ≠ Var x ⇒ SAPPLY s (Var x) ≠ SAPPLY s t`,
