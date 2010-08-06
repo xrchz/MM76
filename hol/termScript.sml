@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib listTheory relationTheory lcsymtacs
+open HolKernel boolLib bossLib Parse listTheory relationTheory lcsymtacs
 
 val _ = new_theory "term"
 
@@ -62,8 +62,11 @@ val fsym_count_def = new_recursive_definition {
   rec_axiom = term_ax'}
 val _ = export_rewrites ["fsym_count_def"];
 
-val (psubterm_rules,psubterm_ind,psubterm_cases) = Hol_reln`
-  (MEM t ts ⇒ psubterm t (App f ts))`;
+val (psubterm1_rules,psubterm1_ind,psubterm1_cases) = Hol_reln`
+  (MEM t ts ⇒ psubterm1 t (App f ts))`;
+
+val _ = overload_on("psubterm",``TC psubterm1``);
+val _ = overload_on("subterm",``RTC psubterm1``);
 
 val vars_cases = Q.store_thm(
 "vars_cases",
@@ -82,18 +85,18 @@ srw_tac [][MEM_MAP] >>
 qexists_tac `vars u` >> srw_tac [][] >>
 qexists_tac `u` >> srw_tac [][]);
 
-val RTC_psubterm_thm = store_thm(
-  "RTC_psubterm_thm",
-  ``(psubterm^* x (Var v) ⇔ (x = Var v))  ∧
-    (psubterm^* x (App f ts) ⇔
-       (x = App f ts) ∨ ∃t. MEM t ts ∧ psubterm^* x t)``,
-  conj_tac >> srw_tac [][Once RTC_CASES2, psubterm_cases, SimpLHS] >>
+val subterm_thm = store_thm(
+  "subterm_thm",
+  ``(subterm x (Var v) ⇔ (x = Var v))  ∧
+    (subterm x (App f ts) ⇔
+       (x = App f ts) ∨ ∃t. MEM t ts ∧ subterm x t)``,
+  conj_tac >> srw_tac [][Once RTC_CASES2, psubterm1_cases, SimpLHS] >>
   metis_tac []);
-val _ = export_rewrites ["RTC_psubterm_thm"]
+val _ = export_rewrites ["subterm_thm"]
 
-val vars_RTC_psubterm = Q.store_thm(
-"vars_RTC_psubterm",
-`v ∈ vars t ⇔ psubterm^* (Var v) t`,
+val vars_subterm = Q.store_thm(
+"vars_subterm",
+`v ∈ vars t ⇔ subterm (Var v) t`,
 Q.ID_SPEC_TAC `t` >>
 ho_match_mp_tac term_ind >>
 conj_tac >- srw_tac [][] >>
@@ -101,14 +104,14 @@ map_every qx_gen_tac [`f`, `ts`] >>
 simp_tac (srw_ss() ++ boolSimps.DNF_ss) [MEM_MAP,EVERY_MEM] >>
 metis_tac []);
 
-val WF_psubterm = Q.store_thm(
-"WF_psubterm",
-`WF psubterm`,
+val WF_psubterm1 = Q.store_thm(
+"WF_psubterm1",
+`WF psubterm1`,
 SIMP_TAC bool_ss [WF_EQ_WFP] >>
 ho_match_mp_tac term_ind >>
 srw_tac [][] >>
 match_mp_tac WFP_RULES >>
-srw_tac [][psubterm_cases] >>
+srw_tac [][psubterm1_cases] >>
 full_simp_tac (srw_ss()) [EVERY_MEM]);
 
 val _ = export_theory ();

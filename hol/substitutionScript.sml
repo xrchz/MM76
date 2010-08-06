@@ -12,19 +12,19 @@ val SAPPLY_def = TotalDefn.tDefine "SAPPLY"`
   metis_tac [subterms_smaller,prim_recTheory.measure_thm,term_size_def] );
 val _ = export_rewrites ["SAPPLY_def"];
 
-val psubterm_mono_SAPPLY = Q.store_thm(
-"psubterm_mono_SAPPLY",
-`∀t u. psubterm t u ⇒ psubterm (SAPPLY s t) (SAPPLY s u)`,
-gen_tac >> ho_match_mp_tac psubterm_ind >>
-srw_tac [][psubterm_cases,MEM_MAP] >>
+val psubterm1_mono_SAPPLY = Q.store_thm(
+"psubterm1_mono_SAPPLY",
+`∀t u. psubterm1 t u ⇒ psubterm1 (SAPPLY s t) (SAPPLY s u)`,
+gen_tac >> ho_match_mp_tac psubterm1_ind >>
+srw_tac [][psubterm1_cases,MEM_MAP] >>
 metis_tac []);
 
-val TC_psubterm_mono_SAPPLY = save_thm(
-"TC_psubterm_mono_SAPPLY",
+val psubterm_mono_SAPPLY = save_thm(
+"psubterm_mono_SAPPLY",
 TC_lifts_monotonicities |>
 Q.GEN `f` |> Q.ISPEC `SAPPLY s` |>
-Q.GEN `R` |> Q.ISPEC `psubterm` |>
-C MATCH_MP psubterm_mono_SAPPLY);
+Q.GEN `R` |> Q.ISPEC `psubterm1` |>
+C MATCH_MP psubterm1_mono_SAPPLY);
 
 val rangevars_def = Define`
   rangevars s = BIGUNION (IMAGE vars (FRANGE s))`;
