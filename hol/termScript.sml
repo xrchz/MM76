@@ -187,4 +187,13 @@ fsrw_tac [][RTC_CASES_TC] >>
 Cases_on `t1 = t2` >> fsrw_tac [][] >>
 metis_tac [NOT_NIL_CONS,subterm_at_nil,list_CASES]);
 
+val subterm_at_thm = Q.store_thm(
+"subterm_at_thm",
+`(subterm_at t ns (Var x) ⇔ (t = Var x) ∧ (ns = [])) ∧
+ (subterm_at t (n::ns) (App f ts) ⇔ n < LENGTH ts ∧  subterm_at t ns (EL n ts))`,
+reverse (srw_tac [][Once subterm_at_cases,EQ_IMP_THM]) >-
+  metis_tac [subterm_at_rules] >>
+fsrw_tac [][Once subterm_at_cases]);
+val _ = export_rewrites["subterm_at_thm"];
+
 val _ = export_theory ();

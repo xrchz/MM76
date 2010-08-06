@@ -71,4 +71,17 @@ srw_tac [][rangevars_def] >- (
 full_simp_tac (srw_ss()) [MEM_MAP,EVERY_MEM,FRANGE_DEF] >>
 metis_tac []);
 
+val unify_corresponding_subterms = Q.store_thm(
+"unify_corresponding_subterms",
+`(SAPPLY s t1 = SAPPLY s t2) ∧ subterm_at u1 ns t1 ∧ subterm_at u2 ns t2 ⇒ (SAPPLY s u1 = SAPPLY s u2)`,
+qsuff_tac `∀ns t1. subterm_at u1 ns t1 ⇒ ∀u2 t2. subterm_at u2 ns t2 ∧ (SAPPLY s t1 = SAPPLY s t2) ⇒ (SAPPLY s u1 = SAPPLY s u2)`
+>- metis_tac [] >>
+ho_match_mp_tac subterm_at_ind >>
+srw_tac [][] >>
+Cases_on `t2` >> fsrw_tac [][] >>
+first_x_assum match_mp_tac >>
+qmatch_assum_abbrev_tac `subterm_at u2 ns t2` >>
+qexists_tac `t2` >> srw_tac [][Abbr`t2`] >>
+fsrw_tac [][LIST_EQ_REWRITE,rich_listTheory.EL_MAP]);
+
 val _ = export_theory ();
