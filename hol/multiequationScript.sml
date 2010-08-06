@@ -52,7 +52,10 @@ srw_tac [][set_unifier_def,meq_unifier_def,EXTENSION,EQ_IMP_THM,eqs_correspond_t
   metis_tac [] ) >>
 metis_tac []);
 
-(* same as above for sets of multiequations? *)
+val meqs_unifier_def = Define`
+  meqs_unifier meqs = BIGINTER (IMAGE meq_unifier meqs)`;
+
+(* correspondence to eqs for meqs_unifier? *)
 
 val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_cases) = Hol_reln`
   (Var v <: m ⇒ common_part_frontier m (Var v, {({x | Var x <: m}, BAG_FILTER (λt. ∀x. t ≠ Var x) m)})) ∧
@@ -156,5 +159,91 @@ reverse conj_tac >- (
   metis_tac [] ) >>
 match_mp_tac eqs_correspond_to_meq_extend >>
 srw_tac [][SUBSET_DEF,terms_of_def] );
+
+val common_part_also_unifies = Q.store_thm(
+"common_part_also_unifies",
+`∀m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ ∀s. meq_unifier (s,m) = meq_unifier (s,BAG_INSERT (FST cf) m)`,
+ho_match_mp_tac common_part_frontier_ind >>
+conj_tac >- (
+  srw_tac [][meq_unifier_def,EQ_IMP_THM,EXTENSION] >>
+  fsrw_tac [][terms_of_def] ) >>
+rpt gen_tac >>
+ntac 2 strip_tac >>
+qx_gen_tac `vs` >>
+simp_tac (srw_ss()) [meq_unifier_def,EXTENSION] >>
+qx_gen_tac `s` >>
+fsrw_tac [boolSimps.DNF_ss][BAG_EVERY] >>
+reverse (srw_tac [][EQ_IMP_THM]) >>
+`∀v1 v2. v1 ∈ vs ∧ v2 ∈ vs ⇒ (SAPPLY s (Var v1) = SAPPLY s (Var v2))` by (
+  rpt strip_tac >> fsrw_tac [][terms_of_def] ) >>
+`∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)` by (
+  rpt strip_tac >> fsrw_tac [][terms_of_def] ) >>
+`∀v t. v ∈ vs ∧ t <: m ⇒ (SAPPLY s (Var v) = SAPPLY s t)` by (
+  rpt strip_tac >> fsrw_tac [][terms_of_def] ) >-
+  fsrw_tac [][terms_of_def] >>
+`∀t. t <: m ⇒ (SAPPLY s t = SAPPLY s (App f (GENLIST common_part n)))` by (
+  rpt strip_tac >>
+  `?ts. (t = App f ts) ∧ (LENGTH ts = n)` by (res_tac >> srw_tac [][]) >>
+  srw_tac [][LIST_EQ_REWRITE,rich_listTheory.EL_MAP] >>
+  qmatch_assum_rename_tac `i < LENGTH ts` [] >>
+  first_x_assum (qspecl_then [`i`,`{}`] mp_tac) >>
+  asm_simp_tac (srw_ss()) [meq_unifier_def,EXTENSION,terms_of_def] >>
+  disch_then (qspec_then `s` (mp_tac o fst o EQ_IMP_RULE)) >>
+  srw_tac [boolSimps.DNF_ss][] >>
+  first_x_assum (qspec_then `App f ts` mp_tac) >>
+  simp_tac (srw_ss()) [] >>
+  disch_then (match_mp_tac o MP_CANON) >>
+  asm_simp_tac (srw_ss()) [] >>
+  map_every qx_gen_tac [`u1`,`u2`] >>
+  rpt strip_tac >>
+  first_x_assum (qspecl_then [`u1`,`u2`] mp_tac) >>
+  `?us1. (u1 = App f us1) ∧ (LENGTH us1 = LENGTH ts)` by (res_tac >> srw_tac [][]) >>
+  `?us2. (u2 = App f us2) ∧ (LENGTH us2 = LENGTH ts)` by (res_tac >> srw_tac [][]) >>
+  srw_tac [][LIST_EQ_REWRITE,rich_listTheory.EL_MAP] ) >>
+fsrw_tac [][terms_of_def] >>
+metis_tac [bagTheory.MEMBER_NOT_EMPTY]);
+
+val meq_unifier_submeq = Q.store_thm(
+"meq_unifier_submeq",
+`vs1 ⊆ vs2 ∧ m1 ≤ m2 ⇒ meq_unifier (vs2,m2) ⊆ meq_unifier (vs1,m1)`,
+srw_tac [][SUBSET_DEF,meq_unifier_def,SUB_BAG,BAG_INN] >>
+first_x_assum match_mp_tac >>
+fsrw_tac [][terms_of_def,BAG_IN,BAG_INN]);
+
+val meq_red_sound = Q.store_thm( (* Half of Theorem 3.1 *)
+"meq_red_sound",
+`meq_red meqs1 meqs2 ∧ (∀meq. meq ∈ meqs1 ⇒ FINITE_BAG (SND meq)) ⇒ (meqs_unifier meqs1 = meqs_unifier meqs2)`,
+srw_tac [][meq_red_cases,meqs_unifier_def] >>
+REWRITE_TAC [EXTENSION] >>
+qmatch_assum_rename_tac `(vs,m) ∈ meqs1` [] >>
+qx_gen_tac `s` >>
+EQ_TAC >> rpt strip_tac >- (
+  fsrw_tac [][] >> srw_tac [][] >-
+    metis_tac []
+  >- (
+    first_x_assum (qspec_then `(vs,m)` mp_tac) >> srw_tac [][] >>
+    first_x_assum (qspec_then `meq_unifier (vs,m)` mp_tac) >>
+    qsuff_tac `meq_unifier (vs,BAG_INSERT c m) ⊆ meq_unifier (vs,{|c|})` >- (
+      srw_tac [][SUBSET_DEF] >>
+      first_x_assum match_mp_tac >>
+      imp_res_tac (GSYM common_part_also_unifies) >>
+      fsrw_tac [][] >>
+      first_x_assum match_mp_tac >>
+      metis_tac [] ) >>
+    match_mp_tac meq_unifier_submeq >>
+    srw_tac [][SUB_BAG,BAG_INN,BAG_INN_BAG_INSERT] >>
+    srw_tac [ARITH_ss][] ) >>
+  fsrw_tac [boolSimps.DNF_ss][] >>
+  rpt (first_x_assum (qspec_then `(vs,m)` mp_tac)) >>
+  srw_tac [][meq_unifier_def] >>
+  qmatch_assum_rename_tac `meq ∈ f` [] >>
+  (frontier_same_address |> MP_CANON |> qspecl_then [`m`,`(c,f)`,`meq`] mp_tac) >>
+  srw_tac [][] >>
+  fsrw_tac [][terms_of_def] >>
+  metis_tac [unify_corresponding_subterms] ) >>
+fsrw_tac [boolSimps.DNF_ss][] >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `meq ∈ meqs1` [] >>
+Cases_on `meq = (vs,m)` >> srw_tac [][] >>
 
 val _ = export_theory ()
