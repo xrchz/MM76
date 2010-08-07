@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse SatisfySimps termTheory bagTheory substitutionTheory equationTheory pred_setTheory relationTheory listTheory finite_mapTheory algorithm_aTheory lcsymtacs
+open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory substitutionTheory equationTheory pred_setTheory relationTheory listTheory finite_mapTheory algorithm_aTheory lcsymtacs
 
 val _ = new_theory "multiequation"
 
@@ -75,7 +75,7 @@ qsuff_tac `∀t m. t <: m ⇒ P m ⇒ Q m` >- (
 ho_match_mp_tac term_ind >>
 srw_tac [][Abbr`P`,Abbr`Q`] >-
   metis_tac [common_part_frontier_rules] >>
-fsrw_tac [boolSimps.DNF_ss][EVERY_MEM,MEM_EL] >>
+fsrw_tac [DNF_ss][EVERY_MEM,MEM_EL] >>
 Cases_on `?v. Var v <: m` >- metis_tac [common_part_frontier_rules] >>
 `?common_part frontier.
   !i. i < LENGTH ts ⇒ common_part_frontier
@@ -127,7 +127,7 @@ srw_tac [][] >- (
   qexists_tac `[]` >>
   srw_tac [][terms_of_def] >>
   first_assum ACCEPT_TAC ) >>
-fsrw_tac [boolSimps.DNF_ss][BAG_EVERY] >>
+fsrw_tac [DNF_ss][BAG_EVERY] >>
 first_x_assum (qspecl_then [`i`,`meq`] mp_tac) >> srw_tac [][] >>
 qexists_tac `i::ns` >> srw_tac [][] >>
 first_x_assum (qspec_then `u` mp_tac) >> srw_tac [][] >>
@@ -172,7 +172,7 @@ ntac 2 strip_tac >>
 qx_gen_tac `vs` >>
 simp_tac (srw_ss()) [meq_unifier_def,EXTENSION] >>
 qx_gen_tac `s` >>
-fsrw_tac [boolSimps.DNF_ss][BAG_EVERY] >>
+fsrw_tac [DNF_ss][BAG_EVERY] >>
 reverse (srw_tac [][EQ_IMP_THM]) >>
 `∀v1 v2. v1 ∈ vs ∧ v2 ∈ vs ⇒ (SAPPLY s (Var v1) = SAPPLY s (Var v2))` by (
   rpt strip_tac >> fsrw_tac [][terms_of_def] ) >>
@@ -189,7 +189,7 @@ reverse (srw_tac [][EQ_IMP_THM]) >>
   first_x_assum (qspecl_then [`i`,`{}`] mp_tac) >>
   asm_simp_tac (srw_ss()) [meq_unifier_def,EXTENSION,terms_of_def] >>
   disch_then (qspec_then `s` (mp_tac o fst o EQ_IMP_RULE)) >>
-  srw_tac [boolSimps.DNF_ss][] >>
+  srw_tac [DNF_ss][] >>
   first_x_assum (qspec_then `App f ts` mp_tac) >>
   simp_tac (srw_ss()) [] >>
   disch_then (match_mp_tac o MP_CANON) >>
@@ -233,7 +233,7 @@ EQ_TAC >> rpt strip_tac >- (
     match_mp_tac meq_unifier_submeq >>
     srw_tac [][SUB_BAG,BAG_INN,BAG_INN_BAG_INSERT] >>
     srw_tac [ARITH_ss][] ) >>
-  fsrw_tac [boolSimps.DNF_ss][] >>
+  fsrw_tac [DNF_ss][] >>
   rpt (first_x_assum (qspec_then `(vs,m)` mp_tac)) >>
   srw_tac [][meq_unifier_def] >>
   qmatch_assum_rename_tac `meq ∈ f` [] >>
@@ -241,7 +241,7 @@ EQ_TAC >> rpt strip_tac >- (
   srw_tac [][] >>
   fsrw_tac [][terms_of_def] >>
   metis_tac [unify_corresponding_subterms] ) >>
-fsrw_tac [boolSimps.DNF_ss][] >>
+fsrw_tac [DNF_ss][] >>
 srw_tac [][] >>
 qmatch_assum_rename_tac `meq ∈ meqs1` [] >>
 Cases_on `meq = (vs,m)` >> srw_tac [][] >>
