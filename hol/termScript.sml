@@ -151,7 +151,7 @@ val subterm_eq_subterm_at = Q.store_thm(
 "subterm_eq_subterm_at",
 `subterm t1 t2 ⇔ ∃ls. subterm_at t1 ls t2`,
 EQ_TAC >- (
-  map_every qidspec_tac [`t2`,`t1`] >>
+  map_every qid_spec_tac [`t2`,`t1`] >>
   ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
   srw_tac [][psubterm1_cases] >-
     srw_tac [SatisfySimps.SATISFY_ss][subterm_at_rules] >>
@@ -159,7 +159,7 @@ EQ_TAC >- (
   qexists_tac `n::ls` >>
   srw_tac [][subterm_at_rules] ) >>
 simp_tac (bool_ss++boolSimps.DNF_ss) [] >>
-qidspec_tac `t2` >>
+qid_spec_tac `t2` >>
 simp_tac bool_ss [Once SWAP_FORALL_THM] >>
 ho_match_mp_tac subterm_at_ind >>
 srw_tac [][MEM_EL] >>

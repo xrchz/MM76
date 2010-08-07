@@ -66,7 +66,7 @@ val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_
 val unifier_implies_common_part = Q.store_thm(
 "unifier_implies_common_part",
 `FINITE_BAG m ∧ m ≠ {||} ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
-qidspec_tac `m` >>
+qid_spec_tac `m` >>
 qho_match_abbrev_tac `∀m. P m ⇒ Q m` >>
 qsuff_tac `∀t m. t <: m ⇒ P m ⇒ Q m` >- (
   srw_tac [][Abbr`P`,Abbr`Q`] >>
@@ -151,7 +151,7 @@ srw_tac [][wfm_def,BAG_EVERY] >>
 srw_tac [][] >>
 qsuff_tac `?eqs. eqs_correspond_to_meq (s,m) eqs ∧ (set_unifier eqs = {})` >-
   metis_tac [meq_unifier_corresponds_set_unifier] >>
-(eqs_corresponding_to_meq_exists |> Q.GEN `meq` |> Q.SPEC `(s,m)` |> STRIP_ASSUME_TAC) >>
+(eqs_corresponding_to_meq_exists |> Q.GEN `meq` |> Q.SPEC `(s,m)` |> strip_assume_tac) >>
 qexists_tac ` eqs ∪ {(Var x,t)}` >>
 reverse conj_tac >- (
   match_mp_tac (GEN_ALL no_cycles) >>
