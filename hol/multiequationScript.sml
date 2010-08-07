@@ -2,6 +2,55 @@ open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory
 
 val _ = new_theory "multiequation"
 
+val BIG_BAG_UNION_def = Define`
+ BIG_BAG_UNION sob = λx. SIGMA (λb. b x) sob`;
+
+val BIG_BAG_UNION_EMPTY = Q.store_thm(
+"BIG_BAG_UNION_EMPTY",
+`BIG_BAG_UNION {} = {||}`,
+SRW_TAC [][BIG_BAG_UNION_def,SUM_IMAGE_THM,EMPTY_BAG,FUN_EQ_THM]);
+val _ = export_rewrites ["BIG_BAG_UNION_EMPTY"];
+
+val BIG_BAG_UNION_INSERT = Q.store_thm(
+"BIG_BAG_UNION_INSERT",
+`FINITE sob ⇒ (BIG_BAG_UNION (b INSERT sob) = b + BIG_BAG_UNION (sob
+DELETE b))`,
+SRW_TAC [][BIG_BAG_UNION_def,SUM_IMAGE_THM,BAG_UNION,FUN_EQ_THM]);
+
+val FINITE_BIG_BAG_UNION = Q.store_thm(
+"FINITE_BIG_BAG_UNION",
+`∀sob. FINITE sob ∧ (∀b. b ∈ sob ⇒ FINITE_BAG b) ⇒ FINITE_BAG
+(BIG_BAG_UNION sob)`,
+SIMP_TAC bool_ss [GSYM AND_IMP_INTRO] THEN
+  HO_MATCH_MP_TAC FINITE_INDUCT THEN
+    SRW_TAC [][BIG_BAG_UNION_INSERT] THEN
+      FULL_SIMP_TAC (srw_ss()) [DELETE_NON_ELEMENT]);
+
+val BAG_IN_BIG_BAG_UNION = Q.store_thm(
+"BAG_IN_BIG_BAG_UNION",
+`FINITE P ⇒ (e <: BIG_BAG_UNION P ⇔ ∃b. e <: b ∧ b ∈ P)`,
+srw_tac [][BIG_BAG_UNION_def,BAG_IN,BAG_INN,EQ_IMP_THM] >- (
+  spose_not_then strip_assume_tac >>
+  (SUM_IMAGE_upper_bound
+   |> Q.GEN `f`
+   |> Q.ISPEC_THEN `\b:'a bag. b e` (Q.ISPEC_THEN `P` mp_tac)) >>
+  srw_tac [][] >>
+  qexists_tac `0` >>
+  srw_tac [ARITH_ss][] >>
+  first_x_assum (qspec_then `x` mp_tac) >>
+  srw_tac [ARITH_ss][] ) >>
+fsrw_tac [][arithmeticTheory.GREATER_EQ] >>
+`1 ≤ SIGMA (\b. b e) {b}` by srw_tac [][SUM_IMAGE_THM] >>
+match_mp_tac arithmeticTheory.LESS_EQ_TRANS >>
+qexists_tac `SIGMA (\b.b e) {b}` >>
+srw_tac [][] >>
+match_mp_tac SUM_IMAGE_SUBSET_LE >>
+srw_tac [][]);
+val _ = export_rewrites ["BAG_IN_BIG_BAG_UNION"];
+
+val pairwise_def = Define`
+  pairwise P s = ∀e1 e2. e1 ∈ s ∧ e2 ∈ s ⇒ P e1 e2`;
+
 val _ = type_abbrev("multiequation", ``:'a set # ('a,'b) term bag``);
 
 val wfm_def = Define`
@@ -54,8 +103,6 @@ metis_tac []);
 
 val meqs_unifier_def = Define`
   meqs_unifier meqs = BIGINTER (IMAGE meq_unifier meqs)`;
-
-(* correspondence to eqs for meqs_unifier? *)
 
 val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_cases) = Hol_reln`
   (Var v <: m ⇒ common_part_frontier m (Var v, {({x | Var x <: m}, BAG_FILTER (λt. ∀x. t ≠ Var x) m)})) ∧
@@ -308,5 +355,45 @@ Cases_on `meq = (vs,m)` >> srw_tac [][] >>
 match_mp_tac (GEN_ALL unify_common_part_and_frontier) >>
 qexists_tac `(c,f)` >> srw_tac [][] >>
 res_tac >> fsrw_tac [][]);
+
+val meq_merge_all_def = Define`
+  meq_merge_all meqs = (BIGUNION (IMAGE FST meqs), BIG_BAG_UNION (IMAGE SND meqs))`;
+
+val meqs_share_vars_def = Define`
+  meqs_share_vars meq1 meq2 = ¬ DISJOINT (FST meq1) (FST meq2)`;
+
+val compactify_def = Define`
+  compactify meqs = { meq_merge_all (meqs_share_vars^= meq) | meq ∈ meqs }`;
+
+val compactified_vars_disjoint = Q.store_thm(
+"compactified_vars_disjoint",
+`pairwise (RC (inv_image DISJOINT FST)) (compactify meqs)`,
+srw_tac [][pairwise_def,RC_DEF,inv_image_def] >>
+Cases_on `e1 = e2` >> srw_tac [][] >>
+fsrw_tac [DNF_ss][compactify_def] >>
+srw_tac [][] >>
+qmatch_assum_abbrev_tac `f (R^= tmp1) ≠ f (R^= tmp2)` >>
+qmatch_assum_rename_tac `Abbrev (tmp1 = meq1)` [] >>
+qmatch_assum_rename_tac `Abbrev (tmp2 = meq2)` [] >>
+map_every Q.UNABBREV_TAC [`tmp1`,`tmp2`] >>
+`equivalence R^=` by (MATCH_ACCEPT_TAC EQC_EQUIVALENCE) >>
+`¬ R^= meq1 meq2` by metis_tac [ALT_equivalence] >>
+qpat_assum `f X ≠ f Y` (K ALL_TAC) >>
+fsrw_tac [DNF_ss][Abbr`f`,meq_merge_all_def] >>
+simp_tac (srw_ss()) [IN_DEF,AND_IMP_INTRO] >>
+map_every qx_gen_tac [`meq1'`,`meq2'`] >>
+rpt strip_tac >>
+spose_not_then strip_assume_tac >>
+`R meq1' meq2'` by metis_tac [meqs_share_vars_def] >>
+metis_tac [EQC_TRANS,EQC_SYM,EQC_R]);
+
+val eqs_correspond_to_compactify_meqs
+
+val compactify_sound = Q.store_thm(
+"compactify_sound",
+`meqs_unifier (compactify meqs) = meqs_unifier meqs`,
+set_unifier
+meq_unifier_corresponds_set_unifier
+srw_tac [DNF_ss][meqs_unifier_def,EXTENSION,compactify_def]
 
 val _ = export_theory ()
