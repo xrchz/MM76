@@ -73,18 +73,36 @@ val terms_of_def = Define`
 val meq_unifier_def = Define`
   meq_unifier meq = {s | ∀t1 t2. t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq ⇒ (SAPPLY s t1 = SAPPLY s t2)}`;
 
+val eq_chain_def = Define`
+  eq_chain eqs t1 t2 = (t1,t2) ∈ eqs ∨ (t2,t1) ∈ eqs`;
+
+val set_unifier_RTC_eq_chain = Q.store_thm(
+"set_unifier_RTC_eq_chain",
+`set_unifier eqs = {s | ∀t1 t2. (eq_chain eqs)^* t1 t2 ⇒ (SAPPLY s t1 = SAPPLY s t2)}`,
+REWRITE_TAC [EXTENSION] >>
+srw_tac [][EQ_IMP_THM] >- (
+  qpat_assum `X ∈ Y` mp_tac >>
+  pop_assum mp_tac >>
+  map_every qid_spec_tac [`t2`,`t1`] >>
+  ho_match_mp_tac RTC_INDUCT >>
+  srw_tac [][eq_chain_def] >>
+  fsrw_tac [][set_unifier_def] >>
+  metis_tac [] ) >>
+srw_tac [][set_unifier_def] >>
+metis_tac [RTC_SINGLE,eq_chain_def]);
+
 val eqs_correspond_to_meq_def = Define`
   eqs_correspond_to_meq meq eqs =
     (∀t1 t2. (t1,t2) ∈ eqs ⇒ t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq) ∧
     (∀t1 t2. t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq ⇒
-             (λt1 t2. (t1,t2) ∈ eqs ∨ (t2,t1) ∈ eqs)^* t1 t2)`;
+             (eq_chain eqs)^* t1 t2)`;
 
 val eqs_corresponding_to_meq_exists = Q.store_thm(
 "eqs_corresponding_to_meq_exists",
 `∃eqs. eqs_correspond_to_meq meq eqs`,
 srw_tac [][eqs_correspond_to_meq_def] >>
 qexists_tac `{(t1,t2) | t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq}` >>
-srw_tac [][]);
+srw_tac [][eq_chain_def]);
 
 val eqs_correspond_to_meq_extend = Q.store_thm(
 "eqs_correspond_to_meq_extend",
@@ -97,9 +115,11 @@ reverse (srw_tac [][pairTheory.FORALL_PROD,eqs_correspond_to_meq_def,SUBSET_DEF]
   simp_tac bool_ss [FUN_EQ_THM,EQ_IMP_THM,FORALL_AND_THM] >>
   conj_tac >> ho_match_mp_tac RTC_INDUCT >>
   srw_tac [][Abbr`Q`,Abbr`R`] >>
+  fsrw_tac [][eq_chain_def] >>
   qmatch_abbrev_tac `R^* x y` >>
-  metis_tac [RTC_RULES,transitive_RTC,transitive_def] ) >>
-metis_tac []);
+  metis_tac [RTC_RULES,transitive_RTC,transitive_def,IN_UNION,eq_chain_def] ) >>
+fsrw_tac [][eq_chain_def] >>
+metis_tac [IN_UNION,RTC_RULES,eq_chain_def]);
 
 val meq_unifier_corresponds_set_unifier = Q.store_thm(
 "meq_unifier_corresponds_set_unifier",
@@ -109,7 +129,7 @@ srw_tac [][set_unifier_def,meq_unifier_def,EXTENSION,EQ_IMP_THM,eqs_correspond_t
   Q.PAT_ASSUM `R^* t1 t2` mp_tac >>
   map_every Q.ID_SPEC_TAC [`t2`,`t1`] >>
   ho_match_mp_tac RTC_INDUCT >>
-  metis_tac [] ) >>
+  metis_tac [eq_chain_def] ) >>
 metis_tac []);
 
 val meqs_unifier_def = Define`
