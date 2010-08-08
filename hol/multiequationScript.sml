@@ -11,7 +11,12 @@ val wfm_def = Define`
   wfm ((s,m):('a,'b) multiequation) = FINITE s ∧ s ≠ {} ∧ FINITE_BAG m ∧ BAG_EVERY (λt. ∀x. t ≠ Var x) m`;
 
 val terms_of_def = Define`
-  terms_of (s,m) = IMAGE Var s ∪ SET_OF_BAG m`;
+  terms_of meq = IMAGE Var (FST meq) ∪ SET_OF_BAG (SND meq)`;
+
+val terms_of_pair_rewrite = Q.store_thm(
+"terms_of_pair_rewrite",
+`terms_of (s,m) = IMAGE Var s ∪ SET_OF_BAG m`,
+srw_tac [][terms_of_def]);
 
 val meq_unifier_def = Define`
   meq_unifier meq = {s | ∀t1 t2. t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq ⇒ (SAPPLY s t1 = SAPPLY s t2)}`;
@@ -320,7 +325,7 @@ EQ_TAC >> rpt strip_tac >- (
   qmatch_assum_rename_tac `meq ∈ f` [] >>
   (frontier_same_address |> MP_CANON |> qspecl_then [`m`,`(c,f)`,`meq`] mp_tac) >>
   srw_tac [][] >>
-  fsrw_tac [][terms_of_def] >>
+  fsrw_tac [][terms_of_pair_rewrite] >>
   metis_tac [unify_corresponding_subterms] ) >>
 fsrw_tac [DNF_ss][] >>
 srw_tac [][] >>
