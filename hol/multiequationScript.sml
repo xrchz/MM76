@@ -18,6 +18,24 @@ val terms_of_pair_rewrite = Q.store_thm(
 `terms_of (s,m) = IMAGE Var s ∪ SET_OF_BAG m`,
 srw_tac [][terms_of_def]);
 
+val wfm_FINITE_BAG = Q.store_thm(
+"wfm_FINITE_BAG",
+`wfm meq ⇒ FINITE_BAG (SND meq)`,
+Cases_on `meq` >> srw_tac [][wfm_def]);
+val _ = export_rewrites["wfm_FINITE_BAG"];
+
+val wfm_FINITE = Q.store_thm(
+"wfm_FINITE",
+`wfm meq ⇒ FINITE (FST meq)`,
+Cases_on `meq` >> srw_tac [][wfm_def]);
+val _ = export_rewrites["wfm_FINITE"];
+
+val FINITE_terms_of = Q.store_thm(
+"FINITE_terms_of",
+`FINITE (FST meq) ∧ FINITE_BAG (SND meq) ⇒ FINITE (terms_of meq)`,
+srw_tac [][terms_of_def]);
+val _ = export_rewrites["FINITE_terms_of"];
+
 val meq_unifier_def = Define`
   meq_unifier meq = {s | ∀t1 t2. t1 ∈ terms_of meq ∧ t2 ∈ terms_of meq ⇒ (SAPPLY s t1 = SAPPLY s t2)}`;
 
