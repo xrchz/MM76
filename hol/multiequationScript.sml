@@ -2,63 +2,6 @@ open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory
 
 val _ = new_theory "multiequation"
 
-val BIG_BAG_UNION_def = Define`
- BIG_BAG_UNION sob = λx. SIGMA (λb. b x) sob`;
-
-val BIG_BAG_UNION_EMPTY = Q.store_thm(
-"BIG_BAG_UNION_EMPTY",
-`BIG_BAG_UNION {} = {||}`,
-SRW_TAC [][BIG_BAG_UNION_def,SUM_IMAGE_THM,EMPTY_BAG,FUN_EQ_THM]);
-val _ = export_rewrites ["BIG_BAG_UNION_EMPTY"];
-
-val BIG_BAG_UNION_INSERT = Q.store_thm(
-"BIG_BAG_UNION_INSERT",
-`FINITE sob ⇒ (BIG_BAG_UNION (b INSERT sob) = b + BIG_BAG_UNION (sob DELETE b))`,
-SRW_TAC [][BIG_BAG_UNION_def,SUM_IMAGE_THM,BAG_UNION,FUN_EQ_THM]);
-
-val BIG_BAG_UNION_ITSET_BAG_UNION = Q.store_thm(
-"BIG_BAG_UNION_ITSET_BAG_UNION",
-`∀sob. FINITE sob ⇒ (BIG_BAG_UNION sob = ITSET BAG_UNION sob {||})`,
-ho_match_mp_tac FINITE_INDUCT >>
-srw_tac [][ITSET_EMPTY] >>
-(COMMUTING_ITSET_RECURSES
- |> Q.ISPECL_THEN [`BAG_UNION`,`e`,`sob`,`{||}`] MP_TAC) >>
-fsrw_tac [][DELETE_NON_ELEMENT] >>
-srw_tac [][BIG_BAG_UNION_INSERT] >>
-FIRST_X_ASSUM (MATCH_MP_TAC o GSYM) >>
-METIS_TAC [COMM_BAG_UNION,ASSOC_BAG_UNION]);
-
-val FINITE_BIG_BAG_UNION = Q.store_thm(
-"FINITE_BIG_BAG_UNION",
-`∀sob. FINITE sob ∧ (∀b. b ∈ sob ⇒ FINITE_BAG b) ⇒ FINITE_BAG
-(BIG_BAG_UNION sob)`,
-SIMP_TAC bool_ss [GSYM AND_IMP_INTRO] THEN
-  HO_MATCH_MP_TAC FINITE_INDUCT THEN
-    SRW_TAC [][BIG_BAG_UNION_INSERT] THEN
-      FULL_SIMP_TAC (srw_ss()) [DELETE_NON_ELEMENT]);
-
-val BAG_IN_BIG_BAG_UNION = Q.store_thm(
-"BAG_IN_BIG_BAG_UNION",
-`FINITE P ⇒ (e <: BIG_BAG_UNION P ⇔ ∃b. e <: b ∧ b ∈ P)`,
-srw_tac [][BIG_BAG_UNION_def,BAG_IN,BAG_INN,EQ_IMP_THM] >- (
-  spose_not_then strip_assume_tac >>
-  (SUM_IMAGE_upper_bound
-   |> Q.GEN `f`
-   |> Q.ISPEC_THEN `\b:'a bag. b e` (Q.ISPEC_THEN `P` mp_tac)) >>
-  srw_tac [][] >>
-  qexists_tac `0` >>
-  srw_tac [ARITH_ss][] >>
-  first_x_assum (qspec_then `x` mp_tac) >>
-  srw_tac [ARITH_ss][] ) >>
-fsrw_tac [][arithmeticTheory.GREATER_EQ] >>
-`1 ≤ SIGMA (\b. b e) {b}` by srw_tac [][SUM_IMAGE_THM] >>
-match_mp_tac arithmeticTheory.LESS_EQ_TRANS >>
-qexists_tac `SIGMA (\b.b e) {b}` >>
-srw_tac [][] >>
-match_mp_tac SUM_IMAGE_SUBSET_LE >>
-srw_tac [][]);
-val _ = export_rewrites ["BAG_IN_BIG_BAG_UNION"];
-
 val pairwise_def = Define`
   pairwise P s = ∀e1 e2. e1 ∈ s ∧ e2 ∈ s ⇒ P e1 e2`;
 
