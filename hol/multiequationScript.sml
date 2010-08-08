@@ -133,7 +133,7 @@ metis_tac [common_part_frontier_rules]);
 
 val (meq_red_rules, meq_red_ind, meq_red_cases) = Hol_reln`
   (s,m) ∈ meqs ∧ common_part_frontier m (c,f) ⇒
-  meq_red meqs (s,m) ((meqs DELETE (s,m)) ∪ ((s,{|c|}) INSERT f))`;
+  meq_red meqs (s,m) (c,f) ((meqs DELETE (s,m)) ∪ ((s,{|c|}) INSERT f))`;
 
 val no_common_part = Q.store_thm( (* Part of Theorem 3.1 *)
 "no_common_part",
@@ -298,7 +298,7 @@ srw_tac [][meq_unifier_def,terms_of_def]);
 
 val meq_red_sound = Q.store_thm( (* Half of Theorem 3.1 *)
 "meq_red_sound",
-`meq_red meqs1 meq meqs2 ∧ (∀meq. meq ∈ meqs1 ⇒ FINITE_BAG (SND meq)) ⇒ (meqs_unifier meqs1 = meqs_unifier meqs2)`,
+`meq_red meqs1 meq cf meqs2 ∧ (∀meq. meq ∈ meqs1 ⇒ FINITE_BAG (SND meq)) ⇒ (meqs_unifier meqs1 = meqs_unifier meqs2)`,
 srw_tac [][meq_red_cases,meqs_unifier_def] >>
 REWRITE_TAC [EXTENSION] >>
 qmatch_assum_rename_tac `(vs,m) ∈ meqs1` [] >>
