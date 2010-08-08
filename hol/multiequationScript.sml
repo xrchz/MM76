@@ -390,11 +390,37 @@ res_tac >> fsrw_tac [][]);
 val meq_merge_all_def = Define`
   meq_merge_all meqs = (BIGUNION (IMAGE FST meqs), BIG_BAG_UNION (IMAGE SND meqs))`;
 
-val meqs_share_vars_def = Define`
-  meqs_share_vars meq1 meq2 = ¬ DISJOINT (FST meq1) (FST meq2)`;
+val terms_of_meq_merge_all = Q.store_thm(
+"terms_of_meq_merge_all",
+`FINITE meqs ⇒ (terms_of (meq_merge_all meqs) = {t | ∃meq. meq ∈ meqs ∧ t ∈ terms_of meq})`,
+REWRITE_TAC [EXTENSION] >>
+srw_tac [][meq_merge_all_def,terms_of_def,EQ_IMP_THM,pairTheory.EXISTS_PROD] >>
+metis_tac []);
+
+val share_vars_def = Define`
+  share_vars meqs meq1 meq2 = meq1 ∈ meqs ∧ meq2 ∈ meqs ∧ ¬ DISJOINT (FST meq1) (FST meq2)`;
 
 val compactify_def = Define`
-  compactify meqs = { meq_merge_all (meqs_share_vars^= meq) | meq ∈ meqs }`;
+  compactify meqs = IMAGE (meq_merge_all o (share_vars meqs)^=) meqs`;
+
+val FINITE_compactify = Q.store_thm(
+"FINITE_compactify",
+`FINITE meqs ⇒ FINITE (compactify meqs)`,
+srw_tac [][compactify_def]);
+
+val EQC_share_vars_implies_IN = Q.store_thm(
+"EQC_share_vars_implies_IN",
+`(share_vars meqs)^= meq1 meq2 ⇒ (meq1 = meq2) ∨ (meq1 ∈ meqs ∧ meq2 ∈ meqs)`,
+map_every qid_spec_tac [`meq2`,`meq1`] >>
+ho_match_mp_tac EQC_INDUCTION >>
+srw_tac [][share_vars_def] >>
+srw_tac [][]);
+
+val FINITE_EQC_share_vars = Q.store_thm(
+"FINITE_EQC_share_vars",
+`FINITE meqs ∧ meq ∈ meqs ⇒ FINITE ((share_vars meqs)^= meq)`,
+metis_tac [SUBSET_FINITE,SUBSET_DEF,EQC_share_vars_implies_IN,IN_DEF]);
+val _ = export_rewrites ["FINITE_EQC_share_vars"];
 
 val compactified_vars_disjoint = Q.store_thm(
 "compactified_vars_disjoint",
@@ -415,16 +441,54 @@ simp_tac (srw_ss()) [IN_DEF,AND_IMP_INTRO] >>
 map_every qx_gen_tac [`meq1'`,`meq2'`] >>
 rpt strip_tac >>
 spose_not_then strip_assume_tac >>
-`R meq1' meq2'` by metis_tac [meqs_share_vars_def] >>
+`R meq1' meq2'` by metis_tac [share_vars_def,EQC_share_vars_implies_IN] >>
 metis_tac [EQC_TRANS,EQC_SYM,EQC_R]);
 
-val eqs_correspond_to_compactify_meqs
+val merge_unifier_SUBSET_meqs_unifier = Q.store_thm(
+"merge_unifier_SUBSET_meqs_unifier",
+`FINITE meqs ⇒ meq_unifier (meq_merge_all meqs) ⊆ meqs_unifier meqs`,
+srw_tac [][meqs_unifier_def,terms_of_meq_merge_all,meq_unifier_def,SUBSET_BIGINTER] >>
+srw_tac [][SUBSET_DEF] >>
+first_x_assum match_mp_tac >> srw_tac [SATISFY_ss][]);
+
+val merge_unifier_SUBSET_meq_unifier = Q.store_thm(
+"merge_unifier_SUBSET_meq_unifier",
+`FINITE meqs ⇒ meq ∈ meqs ⇒ meq_unifier (meq_merge_all meqs) ⊆ meq_unifier meq`,
+srw_tac [][meq_unifier_def,SUBSET_DEF,terms_of_meq_merge_all] >>
+metis_tac []);
+
+val share_vars_terms_of = Q.store_thm(
+"share_vars_terms_of",
+`share_vars meqs meq1 meq2 ⇒ ∃v. Var v ∈ terms_of meq1 ∧ Var v ∈ terms_of meq2`,
+map_every Cases_on [`meq1`,`meq2`] >>
+srw_tac [SATISFY_ss,DNF_ss][share_vars_def,DISJOINT_DEF,GSYM MEMBER_NOT_EMPTY,terms_of_def]);
 
 val compactify_sound = Q.store_thm(
 "compactify_sound",
-`meqs_unifier (compactify meqs) = meqs_unifier meqs`,
-set_unifier
-meq_unifier_corresponds_set_unifier
-srw_tac [DNF_ss][meqs_unifier_def,EXTENSION,compactify_def]
+`FINITE meqs ⇒ (meqs_unifier (compactify meqs) = meqs_unifier meqs)`,
+REWRITE_TAC [SET_EQ_SUBSET,SUBSET_DEF] >>
+srw_tac [DNF_ss][meqs_unifier_def,compactify_def] >>
+qmatch_assum_rename_tac `meq ∈ meqs` [] >- (
+  first_x_assum (qspec_then `meq` mp_tac) >>
+  srw_tac [][] >>
+  match_mp_tac (MP_CANON (GEN_ALL (SIMP_RULE (srw_ss()) [SUBSET_DEF] merge_unifier_SUBSET_meq_unifier))) >>
+  qexists_tac `(share_vars meqs)^= meq` >>
+  srw_tac [][IN_DEF,EQC_REFL] ) >>
+srw_tac [][meq_unifier_def,terms_of_meq_merge_all] >>
+qmatch_assum_rename_tac `t1 ∈ terms_of meq1` [] >>
+qmatch_assum_rename_tac `t2 ∈ terms_of meq2` [] >>
+fsrw_tac [DNF_ss][meq_unifier_def] >>
+qsuff_tac `(meq1 = meq2) ∨ ∃u1 u2. u1 ∈ terms_of meq1 ∧ u2 ∈ terms_of meq2 ∧
+                   (SAPPLY x u1 = SAPPLY x u2)` >- metis_tac [EQC_share_vars_implies_IN,IN_DEF] >>
+`(share_vars meqs)^= meq1 meq2` by metis_tac [EQC_TRANS,IN_DEF,EQC_SYM] >>
+qpat_assum `meq ∈ meqs` (K ALL_TAC) >>
+qpat_assum `meq1 ∈ R^= meq` (K ALL_TAC) >>
+qpat_assum `meq2 ∈ R^= meq` (K ALL_TAC) >>
+rpt (qpat_assum `t ∈ terms_of meq` (K ALL_TAC)) >>
+qpat_assum `R^= m y` mp_tac >>
+map_every qid_spec_tac [`meq2`,`meq1`] >>
+ho_match_mp_tac STRONG_EQC_INDUCTION >>
+srw_tac [][] >>
+metis_tac [share_vars_terms_of,EQC_share_vars_implies_IN]);
 
 val _ = export_theory ()
