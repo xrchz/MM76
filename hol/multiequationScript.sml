@@ -127,6 +127,13 @@ srw_tac [][wfm_def,BAG_EVERY] >- (
   srw_tac [][] ) >>
 srw_tac [SATISFY_ss][GSYM pred_setTheory.MEMBER_NOT_EMPTY]);
 
+val common_part_var = Q.store_thm(
+"common_part_var",
+`!m cf. common_part_frontier m cf ⇒ ((∃v. (FST cf) = Var v) ⇔ (∃v. Var v <: m))`,
+ho_match_mp_tac common_part_frontier_ind >>
+srw_tac [SATISFY_ss][BAG_EVERY] >>
+first_x_assum (qspec_then `Var v` mp_tac) >> srw_tac [][]);
+
 val unifier_implies_common_part = Q.store_thm(
 "unifier_implies_common_part",
 `FINITE_BAG m ∧ m ≠ {||} ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
