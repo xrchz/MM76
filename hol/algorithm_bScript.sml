@@ -186,4 +186,85 @@ srw_tac [][compactify_def] >>
     fsrw_tac [][EQC_DEF,RC_DEF,symmetric_SC_identity] >>
 *)
 
+val pairwise_DISJOINT_implies_EQC_share_vars_sing = Q.store_thm(
+"pairwise_DISJOINT_implies_EQC_share_vars_sing",
+`!meqs meq. meq ∈ meqs ∧ pairwise (RC (inv_image DISJOINT FST)) meqs ⇒ ((share_vars meqs)^= meq = {meq})`,
+srw_tac [][pairwise_def,RC_DEF,EXTENSION,inv_image_def] >>
+simp_tac bool_ss [IN_DEF] >>
+srw_tac [][EQ_IMP_THM] >>
+qpat_assum `meq ∈ meqs` mp_tac >>
+qpat_assum `R^= X Y` mp_tac >>
+map_every qid_spec_tac [`x`,`meq`] >>
+ho_match_mp_tac STRONG_EQC_INDUCTION >>
+srw_tac [][share_vars_def] >>
+metis_tac [EQC_share_vars_implies_IN] );
+
+val EQC_eq = Q.store_thm(
+"EQC_eq",
+`$= ^= = $=`,
+SRW_TAC [][EQC_DEF,FUN_EQ_THM,RC_DEF,SC_DEF,TC_DEF,EQ_IMP_THM] THEN
+FIRST_X_ASSUM MATCH_MP_TAC THEN
+SRW_TAC [][]);
+
+val pairwise_UNION = Q.store_thm(
+"pairwise_UNION",
+`pairwise R (s1 ∪ s2) ⇔ pairwise R s1 ∧ pairwise R s2 ∧ (!x y. x ∈ s1 ∧ y ∈ s2 ⇒ R x y ∧ R y x)`,
+srw_tac [DNF_ss][pairwise_def] >> metis_tac []);
+
+val pairwise_SUBSET = Q.store_thm(
+"pairwise_SUBSET",
+`∀R s t. pairwise R t ∧ s ⊆ t ⇒ pairwise R s`,
+srw_tac [][SUBSET_DEF,pairwise_def]);
+
+val FINITE_BAG_IMAGE_eq_INSERT = Q.store_thm(
+"FINITE_BAG_IMAGE_eq_INSERT",
+`∀b. FINITE_BAG b ⇒ ∀x c. ((BAG_IMAGE f b = BAG_INSERT x c) ⇔ ∃e b0. (x = f e) ∧ (BAG_DELETE b e b0) ∧ (c = BAG_IMAGE f b0))`,
+ho_match_mp_tac STRONG_FINITE_BAG_INDUCT >>
+srw_tac [][BAG_DELETE] >>
+srw_tac [][BAG_INSERT_EQUAL] >>
+srw_tac [][EQ_IMP_THM] >- (
+  map_every qexists_tac [`e`,`b`] >> srw_tac [][] )
+>- (
+  fsrw_tac [][] >>
+  pop_assum mp_tac >> srw_tac [][] >>
+  srw_tac [DNF_ss][] >>
+  Cases_on `f e = f e'` >- (
+    DISJ1_TAC >>
+    map_every qexists_tac [`e'`,`b0`] >>
+    srw_tac [][] ) >>
+  srw_tac [][] >>
+  map_every qexists_tac [`e'`,`b0`] >>
+  srw_tac [][] ) >>
+fsrw_tac [][] >>
+Cases_on `f e = f e'` >> srw_tac [][] >>
+map_every qexists_tac [`e'`,`k`] >>
+srw_tac [][] );
+
+val BAG_IMAGE_EQ_EMPTY = Q.store_thm(
+"BAG_IMAGE_EQ_EMPTY",
+`FINITE_BAG b ∧ (BAG_IMAGE f b = {||}) ⇒ (b = {||})`,
+STRUCT_CASES_TAC (SPEC_ALL BAG_cases) THEN
+SRW_TAC [][GSYM AND_IMP_INTRO]);
+
+val vars_common_part_SUBSET = Q.store_thm(
+"vars_common_part_SUBSET",
+`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ vars (FST cf) ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))`,
+ho_match_mp_tac common_part_frontier_ind >>
+srw_tac [DNF_ss][] >- (
+  qexists_tac `Var v` >> srw_tac [][] ) >>
+srw_tac [DNF_ss][SUBSET_DEF,rich_listTheory.MAP_GENLIST,MEM_EL] >>
+fsrw_tac [DNF_ss][BAG_EVERY,rich_listTheory.EL_GENLIST,SUBSET_DEF] >>
+qmatch_assum_rename_tac `i < n` [] >>
+first_x_assum (qspecl_then [`i`,`x`] mp_tac) >>
+srw_tac [][] >>
+qexists_tac `y` >>
+res_tac >> fsrw_tac [][] >>
+srw_tac [SATISFY_ss,DNF_ss][MEM_MAP,MEM_EL]);
+
+val INJ_IMAGE_DELETE = Q.store_thm(
+"INJ_IMAGE_DELETE",
+`INJ f s t ∧ x ∈ s ⇒ (IMAGE f (s DELETE x) = IMAGE f s DELETE (f x))`,
+srw_tac [][EXTENSION,EQ_IMP_THM,INJ_DEF] >>
+metis_tac []);
+
 val _ = export_theory ()
