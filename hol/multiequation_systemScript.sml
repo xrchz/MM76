@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse multiequationTheory lcsymtacs
+open HolKernel boolLib bossLib boolSimps SatisfySimps Parse multiequationTheory pred_setTheory listTheory lcsymtacs
 
 val _ = new_theory "multiequation_system"
 
@@ -49,5 +49,16 @@ val wfsystem_wfm_pair = Q.store_thm(
  (wfsystem (t,u) ∧ MEM meq t ⇒ wfm meq)`,
 srw_tac [][wfsystem_def,meqs_of_def]);
 val _ = export_rewrites["wfsystem_wfm_pair"];
+
+val wfsystem_unsolved_var_in_unsolved_left = Q.store_thm(
+"wfsystem_unsolved_var_in_unsolved_left",
+`∀t u s m tm v. wfsystem (t,u) ∧ (s,m) ∈ u ∧ tm <: m ∧ v ∈ vars tm ⇒ ∃meq. meq ∈ u ∧ v ∈ FST meq`,
+srw_tac [DNF_ss][wfsystem_def,SUBSET_DEF] >>
+first_x_assum (qspecl_then [`v`,`tm`,`(s,m)`] mp_tac) >>
+srw_tac [][meqs_of_def,MEM_EL] >- (
+  first_x_assum (qspecl_then [`n`,`tm`,`(s,m)`] mp_tac) >>
+  srw_tac [][IN_DISJOINT] >>
+  metis_tac [] ) >>
+srw_tac [SATISFY_ss][]);
 
 val _ = export_theory ()
