@@ -107,6 +107,17 @@ val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_
    (∀i. i < n ⇒ common_part_frontier (BAG_IMAGE (term_case ARB (λf ts. EL i ts)) m) (common_part i, frontier i)) ⇒
    common_part_frontier m (App f (GENLIST common_part n), BIGUNION {frontier i | i < n}))`;
 
+val wfm_frontier = Q.store_thm(
+"wfm_frontier",
+`∀m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) wfm`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM]) >>
+srw_tac [][wfm_def,BAG_EVERY] >- (
+  `{x | Var x <: m} = IMAGE (term_case I ARB) (SET_OF_BAG (BAG_FILTER (\t. ?x. Var x = t) m))` by (
+    srw_tac [DNF_ss][EXTENSION] ) >>
+  srw_tac [][] ) >>
+srw_tac [SATISFY_ss][GSYM pred_setTheory.MEMBER_NOT_EMPTY]);
+
 val unifier_implies_common_part = Q.store_thm(
 "unifier_implies_common_part",
 `FINITE_BAG m ∧ m ≠ {||} ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
@@ -369,6 +380,27 @@ val vars_of_meq_merge_all = Q.store_thm(
 srw_tac [][meq_merge_all_def,SET_EQ_SUBSET] >>
 srw_tac [SATISFY_ss,DNF_ss][SUBSET_DEF]);
 
+val wfm_meq_merge_all = Q.store_thm(
+"wfm_meq_merge_all",
+`FINITE meqs ∧ meqs ≠ {} ∧ RES_FORALL meqs wfm ⇒ wfm (meq_merge_all meqs)`,
+srw_tac [][RES_FORALL_THM,meq_merge_all_def] >>
+srw_tac [][wfm_def] >- (
+  Cases_on `x` >> fsrw_tac [DNF_ss][BAG_EVERY,wfm_def] >>
+  res_tac >> fsrw_tac [][wfm_def] )
+>- (
+  srw_tac [][Once NOT_EQUAL_SETS] >>
+  qexists_tac `{}` >>
+  srw_tac [][] >>
+  qmatch_rename_tac `{} ≠ FST meq ∨ meq ∉ meqs` [] >>
+  Cases_on `meq ∈ meqs` >> srw_tac [][] >>
+  Cases_on `meq` >> res_tac >> fsrw_tac [][wfm_def] )
+>- (
+  match_mp_tac FINITE_BIG_BAG_UNION >>
+  srw_tac [][] >>
+  Cases_on `x` >> fsrw_tac [][] ) >>
+srw_tac [][BAG_EVERY] >>
+Cases_on `x` >> res_tac >> fsrw_tac [][wfm_def,BAG_EVERY] )
+
 val share_vars_def = Define`
   share_vars meqs meq1 meq2 = meq1 ∈ meqs ∧ meq2 ∈ meqs ∧ ¬ DISJOINT (FST meq1) (FST meq2)`;
 
@@ -393,6 +425,29 @@ val FINITE_EQC_share_vars = Q.store_thm(
 `FINITE meqs ∧ meq ∈ meqs ⇒ FINITE ((share_vars meqs)^= meq)`,
 metis_tac [SUBSET_FINITE,SUBSET_DEF,EQC_share_vars_implies_IN,IN_DEF]);
 val _ = export_rewrites ["FINITE_EQC_share_vars"];
+
+val wfm_EQC_share_vars = Q.store_thm(
+"wfm_EQC_share_vars",
+`FINITE meqs ∧ RES_FORALL meqs wfm ∧ meq ∈ meqs ⇒ RES_FORALL ((share_vars meqs)^= meq) wfm`,
+srw_tac [][RES_FORALL_THM] >>
+res_tac >>
+first_x_assum match_mp_tac >>
+PROVE_TAC [IN_DEF,EQC_share_vars_implies_IN] );
+
+val wfm_compactify = Q.store_thm(
+"wfm_compactify",
+`FINITE meqs ∧ RES_FORALL meqs wfm ⇒ RES_FORALL (compactify meqs) wfm`,
+srw_tac [][compactify_def,RES_FORALL_THM] >>
+qmatch_assum_rename_tac `meq ∈ meqs` [] >>
+res_tac >>
+Cases_on `meq` >> fsrw_tac [][wfm_def] >>
+match_mp_tac wfm_meq_merge_all >>
+srw_tac [][] >- (
+  srw_tac [][NOT_EQUAL_SETS,IN_DEF] >>
+  PROVE_TAC [EQC_REFL] ) >>
+simp_tac std_ss [RES_FORALL_THM] >>
+match_mp_tac (SIMP_RULE std_ss [RES_FORALL_THM] wfm_EQC_share_vars) >>
+srw_tac [][]);
 
 val compactified_vars_disjoint = Q.store_thm(
 "compactified_vars_disjoint",
