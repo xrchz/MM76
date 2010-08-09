@@ -363,6 +363,12 @@ REWRITE_TAC [EXTENSION] >>
 srw_tac [][meq_merge_all_def,terms_of_def,EQ_IMP_THM,pairTheory.EXISTS_PROD] >>
 metis_tac []);
 
+val vars_of_meq_merge_all = Q.store_thm(
+"vars_of_meq_merge_all",
+`FST (meq_merge_all meqs) = {v | ∃meq. meq ∈ meqs ∧ v ∈ FST meq}`,
+srw_tac [][meq_merge_all_def,SET_EQ_SUBSET] >>
+srw_tac [SATISFY_ss,DNF_ss][SUBSET_DEF]);
+
 val share_vars_def = Define`
   share_vars meqs meq1 meq2 = meq1 ∈ meqs ∧ meq2 ∈ meqs ∧ ¬ DISJOINT (FST meq1) (FST meq2)`;
 
@@ -456,5 +462,14 @@ map_every qid_spec_tac [`meq2`,`meq1`] >>
 ho_match_mp_tac STRONG_EQC_INDUCTION >>
 srw_tac [][] >>
 metis_tac [share_vars_terms_of,EQC_share_vars_implies_IN]);
+
+val compactify_same_vars = Q.store_thm(
+"compactify_same_vars",
+`BIGUNION (IMAGE FST (compactify meqs)) = BIGUNION (IMAGE FST meqs)`,
+reverse (srw_tac [][SET_EQ_SUBSET,compactify_def]) >>
+srw_tac [DNF_ss][SUBSET_DEF,vars_of_meq_merge_all] >- (
+  qmatch_assum_rename_tac `x  ∈ FST meq` [] >>
+  ntac 2 (qexists_tac `meq`) >> srw_tac [][EQC_REFL,IN_DEF] ) >>
+metis_tac [IN_DEF,EQC_share_vars_implies_IN]);
 
 val _ = export_theory ()
