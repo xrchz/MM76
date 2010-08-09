@@ -107,6 +107,15 @@ val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_
    (∀i. i < n ⇒ common_part_frontier (BAG_IMAGE (term_case ARB (λf ts. EL i ts)) m) (common_part i, frontier i)) ⇒
    common_part_frontier m (App f (GENLIST common_part n), BIGUNION {frontier i | i < n}))`;
 
+val FINITE_frontier = Q.store_thm(
+"FINITE_frontier",
+`∀m cf. common_part_frontier m cf ⇒ FINITE (SND cf)`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][]) >>
+`{frontier i | i < n} = IMAGE frontier (count n)` by (
+  srw_tac [][EXTENSION] ) >>
+srw_tac [][]);
+
 val wfm_frontier = Q.store_thm(
 "wfm_frontier",
 `∀m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) wfm`,
