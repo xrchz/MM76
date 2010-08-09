@@ -413,6 +413,11 @@ Cases_on `x` >> res_tac >> fsrw_tac [][wfm_def,BAG_EVERY] )
 val share_vars_def = Define`
   share_vars meqs meq1 meq2 = meq1 ∈ meqs ∧ meq2 ∈ meqs ∧ ¬ DISJOINT (FST meq1) (FST meq2)`;
 
+val symmetric_share_vars = Q.store_thm(
+"symmetric_share_vars",
+`symmetric (share_vars meqs)`,
+srw_tac [][symmetric_def,share_vars_def,DISJOINT_SYM,EQ_IMP_THM]);
+
 val compactify_def = Define`
   compactify meqs = IMAGE (meq_merge_all o (share_vars meqs)^=) meqs`;
 
