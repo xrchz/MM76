@@ -134,6 +134,14 @@ ho_match_mp_tac common_part_frontier_ind >>
 srw_tac [SATISFY_ss][BAG_EVERY] >>
 first_x_assum (qspec_then `Var v` mp_tac) >> srw_tac [][]);
 
+val vars_common_part_SUBSET_FST_frontier = Q.store_thm(
+"vars_common_part_SUBSET_FST_frontier",
+`!m cf. common_part_frontier m cf ⇒ vars (FST cf) ⊆ BIGUNION (IMAGE FST (SND cf))`,
+ho_match_mp_tac common_part_frontier_ind >> srw_tac [][] >>
+srw_tac [DNF_ss][SUBSET_DEF,rich_listTheory.MAP_GENLIST,MEM_EL] >>
+fsrw_tac [DNF_ss][BAG_EVERY,rich_listTheory.EL_GENLIST,SUBSET_DEF] >>
+PROVE_TAC []);
+
 val unifier_implies_common_part = Q.store_thm(
 "unifier_implies_common_part",
 `FINITE_BAG m ∧ m ≠ {||} ∧ (∀t1 t2. t1 <: m ∧ t2 <: m ⇒ (SAPPLY s t1 = SAPPLY s t2)) ⇒ ∃cf. common_part_frontier m cf`,
