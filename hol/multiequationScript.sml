@@ -106,6 +106,23 @@ metis_tac []);
 val meqs_unifier_def = Define`
   meqs_unifier meqs = BIGINTER (IMAGE meq_unifier meqs)`;
 
+val meqs_unifier_UNION = Q.store_thm(
+"meqs_unifier_UNION",
+`meqs_unifier (meqs1 ∪ meqs2) = meqs_unifier meqs1 ∩ meqs_unifier meqs2`,
+PROVE_TAC [meqs_unifier_def,IMAGE_UNION,BIGINTER_UNION]);
+
+val meqs_unifier_INSERT = Q.store_thm(
+"meqs_unifier_INSERT",
+`meqs_unifier (meq INSERT meqs) = meq_unifier meq ∩ meqs_unifier meqs`,
+PROVE_TAC [meqs_unifier_def,BIGINTER_INSERT,IMAGE_INSERT]);
+
+val meqs_unifier_IN_INTER_DELETE = Q.store_thm(
+"meqs_unifier_IN_INTER_DELETE",
+`meq ∈ meqs ⇒ (meq_unifier meq ∩ meqs_unifier (meqs DELETE meq) = meqs_unifier meqs)`,
+srw_tac [][meqs_unifier_def] >>
+srw_tac [DNF_ss][BIGINTER,INTER_DEF,GSPEC_ETA] >>
+srw_tac [][FUN_EQ_THM] >> PROVE_TAC []);
+
 val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_cases) = Hol_reln`
   (Var v <: m ⇒ common_part_frontier m (Var v, {({x | Var x <: m}, BAG_FILTER (λt. ∀x. t ≠ Var x) m)})) ∧
   (BAG_EVERY (λt. ∃ts. (t = App f ts) ∧ (LENGTH ts = n)) m ∧ m ≠ {||} ∧
