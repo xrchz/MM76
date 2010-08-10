@@ -18,6 +18,11 @@ val terms_of_pair_rewrite = Q.store_thm(
 `terms_of (s,m) = IMAGE Var s ∪ SET_OF_BAG m`,
 srw_tac [][terms_of_def]);
 
+val terms_of_thm = Q.store_thm(
+"terms_of_thm",
+`t ∈ terms_of meq ⇔ (∃v. v ∈ FST meq ∧ (t = Var v)) ∨ (t <: SND meq)`,
+rpt (srw_tac [SATISFY_ss][terms_of_def,EQ_IMP_THM]));
+
 val wfm_FINITE_BAG = Q.store_thm(
 "wfm_FINITE_BAG",
 `wfm meq ⇒ FINITE_BAG (SND meq)`,
