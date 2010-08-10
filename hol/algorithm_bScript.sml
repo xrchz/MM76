@@ -339,4 +339,49 @@ val INJ_IMAGE_DELETE = Q.store_thm(
 srw_tac [][EXTENSION,EQ_IMP_THM,INJ_DEF] >>
 metis_tac []);
 
+val meqs_unifier_INTER_DELETE = Q.store_thm(
+"meqs_unifier_INTER_DELETE",
+`meq_unifier meq ∩ meqs_unifier (meqs DELETE meq) = meq_unifier meq ∩ meqs_unifier meqs`,
+srw_tac [][meqs_unifier_def] >>
+Cases_on `meq ∈ meqs` >> srw_tac [][] >>
+srw_tac [DNF_ss][BIGINTER,INTER_DEF,GSPEC_ETA] >>
+srw_tac [][FUN_EQ_THM] >> PROVE_TAC []);
+
+val frontier_left_FINITE = Q.store_thm(
+"frontier_left_FINITE",
+`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) (FINITE o FST)`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM]) >>
+`{x | Var x <: m} = IMAGE (term_case I ARB) (SET_OF_BAG (BAG_FILTER (\t. ?v. t = Var v) m))` by (
+  srw_tac [DNF_ss][EXTENSION,EQ_IMP_THM] ) >>
+srw_tac [][]);
+
+val frontier_left_nonempty = Q.store_thm(
+"frontier_left_nonempty",
+`!m cf. common_part_frontier m cf ⇒ RES_FORALL (SND cf) ($<> {} o FST)`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM,NOT_EQUAL_SETS]));
+
+val frontier_right_FINITE_BAG = Q.store_thm(
+"frontier_right_FINITE_BAG",
+`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) (FINITE_BAG o SND)`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM]));
+
+val frontier_right_not_var = Q.store_thm(
+"frontier_right_not_var",
+`!m cf. common_part_frontier m cf ⇒ ∀t meq. meq ∈ SND cf ∧ t <: SND meq ⇒ (∀x. t ≠ Var x)`,
+ho_match_mp_tac common_part_frontier_ind >>
+ntac 2 (srw_tac [SATISFY_ss][]));
+
+val wfm_frontier = Q.store_thm( (* Don't know why mutual induction didn't work when I tried *)
+"wfm_frontier",
+`common_part_frontier m (c,f) ∧ wfm (s,m) ⇒ RES_FORALL f wfm`,
+srw_tac [][RES_FORALL_THM,FORALL_PROD,wfm_def,BAG_EVERY] >>
+imp_res_tac frontier_left_FINITE >>
+imp_res_tac frontier_left_nonempty >>
+imp_res_tac frontier_right_FINITE_BAG >>
+fsrw_tac [][RES_FORALL_THM,FORALL_PROD] >>
+metis_tac [frontier_right_not_var,SND]);
+
 val _ = export_theory ()
