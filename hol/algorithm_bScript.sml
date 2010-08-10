@@ -113,6 +113,60 @@ simp_tac std_ss [pairwise_def,inv_image_def,RC_DEF] >>
 asm_simp_tac (srw_ss())[meqs_vars_elim_def,Abbr`e`,FORALL_PROD,EXISTS_PROD] >>
 PROVE_TAC [] );
 
+val meqs_vars_elim_sound = Q.store_thm(
+"meqs_vars_elim_sound",
+`FINITE s ∧ RES_FORALL meqs (FINITE_BAG o SND) ∧
+ (s,{|c|}) ∈ meqs ∧ (vars_elim s c c = c)
+ ⇒ (meqs_unifier meqs = meqs_unifier (meqs_vars_elim s c meqs))`,
+srw_tac [DNF_ss][FORALL_PROD,RES_FORALL_THM,meq_unifier_def,meqs_vars_elim_def,meqs_unifier_def,Once EXTENSION] >>
+srw_tac [][EQ_IMP_THM] >>
+qmatch_assum_rename_tac `(vs,m) ∈ meqs` [] >>
+`!v1 v2. v1 ∈ vs ∧ v2 ∈ vs ⇒ (SAPPLY x (Var v1) = SAPPLY x (Var v2))` by
+  fsrw_tac [SATISFY_ss][terms_of_pair_rewrite] >>
+`!v. v ∈ s ⇒ (SAPPLY x (Var v) = SAPPLY x c)` by (
+  rpt strip_tac >>
+  first_x_assum (qspecl_then [`s`,`{|c|}`,`Var v`,`c`] mp_tac) >>
+  srw_tac [][terms_of_def] ) >>
+`!t. (SAPPLY x (vars_elim s c t) = SAPPLY x t)` by (
+  ho_match_mp_tac termTheory.term_ind >>
+  srw_tac [][MEM_EL,EVERY_MEM,vars_elim_def,FLOOKUP_FUN_FMAP,LIST_EQ_REWRITE,rich_listTheory.EL_MAP] >- (
+    res_tac >> fsrw_tac [][] ) >>
+  PROVE_TAC [] ) >>
+`FINITE_BAG m` by PROVE_TAC [] >>
+full_simp_tac std_ss [BAG_IN_FINITE_BAG_IMAGE,terms_of_thm] >>
+metis_tac [BAG_IN_FINITE_BAG_IMAGE] );
+
+val algb1_sound = Q.store_thm(
+"algb1_sound",
+`algb1 sys1 sys2 ⇒ (meqs_unifier (meqs_of sys1) = meqs_unifier (meqs_of sys2))`,
+srw_tac [DNF_ss][meqs_of_def,algb1_cases] >>
+srw_tac [][meqs_unifier_UNION,LIST_TO_SET_SNOC,meqs_unifier_INSERT] >>
+`FINITE s` by PROVE_TAC [wfsystem_wfm_pair,wfm_FINITE,FST] >>
+qmatch_abbrev_tac `A ∩ B = C ∩ A ∩ (meqs_unifier (meqs_vars_elim s c D DELETE e))` >>
+`e ∈ D` by (
+  unabbrev_all_tac >> srw_tac [][] >>
+  match_mp_tac compactify_leaves_common_part_meq >>
+  fsrw_tac [][wfsystem_def,meqs_of_def,pairwise_def] ) >>
+`vars_elim s c c = c` by (
+  match_mp_tac vars_elim_leaves_common_part >>
+  fsrw_tac [][meq_red_cases] ) >>
+`e ∈ meqs_vars_elim s c D` by (
+  unabbrev_all_tac >> srw_tac [][meqs_vars_elim_def] >>
+  qexists_tac `(s,{|c|})` >> srw_tac [][] ) >>
+qsuff_tac `A ∩ B = A ∩ (C ∩ meqs_unifier (meqs_vars_elim s c D DELETE e))` >- PROVE_TAC [INTER_COMM,INTER_ASSOC] >>
+srw_tac [][meqs_unifier_IN_INTER_DELETE,Abbr`C`] >>
+qmatch_abbrev_tac `A ∩ B = A ∩ C` >>
+qsuff_tac `B = C` >- srw_tac [][] >>
+`B = meqs_unifier (compactify u2)` by
+  metis_tac [meq_red_sound,wfsystem_wfm_pair,wfm_FINITE_BAG,
+             compactify_sound,meq_red_FINITE,wfsystem_FINITE_pair] >>
+unabbrev_all_tac >> srw_tac [][] >>
+match_mp_tac meqs_vars_elim_sound >>
+srw_tac [][RES_FORALL_THM] >>
+PROVE_TAC [ wfm_FINITE_BAG, wfm_compactify, RES_FORALL_THM,
+            wfsystem_wfm_pair, wfm_meq_red,
+            meq_red_FINITE, wfsystem_FINITE_pair] );
+
 (*
 val algb1_example0 = Q.store_thm(
 "algb1_example0",
