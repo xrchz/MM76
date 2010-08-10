@@ -1,4 +1,4 @@
-open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory substitutionTheory equationTheory pred_setTheory relationTheory listTheory finite_mapTheory algorithm_aTheory lcsymtacs
+open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory substitutionTheory equationTheory pred_setTheory relationTheory listTheory finite_mapTheory algorithm_aTheory pairTheory lcsymtacs
 
 val _ = new_theory "multiequation"
 
@@ -209,6 +209,21 @@ metis_tac [common_part_frontier_rules]);
 val (meq_red_rules, meq_red_ind, meq_red_cases) = Hol_reln`
   (s,m) ∈ meqs ∧ common_part_frontier m (c,f) ⇒
   meq_red meqs (s,m) (c,f) ((meqs DELETE (s,m)) ∪ ((s,{|c|}) INSERT f))`;
+
+val meq_red_FINITE = Q.store_thm(
+"meq_red_FINITE",
+`FINITE meqs1 ∧ meq_red meqs1 meq cf meqs2 ⇒ FINITE meqs2`,
+srw_tac [][meq_red_cases] >>
+imp_res_tac FINITE_frontier >>
+fsrw_tac [][]);
+
+val wfm_meq_red = Q.store_thm(
+"wfm_meq_red",
+`RES_FORALL meqs1 wfm ∧ meq_red meqs1 meq cf meqs2 ⇒ RES_FORALL meqs2 wfm`,
+srw_tac [][RES_FORALL_THM,meq_red_cases] >> fsrw_tac [][] >- (
+  fsrw_tac [SATISFY_ss][FORALL_PROD,wfm_def,BAG_EVERY] >>
+  PROVE_TAC [common_part_var, FST] ) >>
+metis_tac [wfm_frontier,SND,wfm_FINITE_BAG,RES_FORALL_THM]);
 
 val no_common_part = Q.store_thm( (* Part of Theorem 3.1 *)
 "no_common_part",
