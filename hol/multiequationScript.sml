@@ -216,6 +216,7 @@ val meq_red_FINITE = Q.store_thm(
 srw_tac [][meq_red_cases] >>
 imp_res_tac FINITE_frontier >>
 fsrw_tac [][]);
+val _ = export_rewrites["meq_red_FINITE"];
 
 val wfm_meq_red = Q.store_thm(
 "wfm_meq_red",
@@ -477,6 +478,7 @@ val FINITE_compactify = Q.store_thm(
 "FINITE_compactify",
 `FINITE meqs ⇒ FINITE (compactify meqs)`,
 srw_tac [][compactify_def]);
+val _ = export_rewrites["FINITE_compactify"];
 
 val EQC_share_vars_implies_IN = Q.store_thm(
 "EQC_share_vars_implies_IN",
