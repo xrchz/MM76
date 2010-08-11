@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse listTheory relationTheory prim_recTheory arithmeticTheory lcsymtacs
+open HolKernel boolLib bossLib Parse listTheory pred_setTheory relationTheory prim_recTheory arithmeticTheory lcsymtacs
 
 val _ = new_theory "term"
 
@@ -124,6 +124,15 @@ conj_tac >- srw_tac [][] >>
 map_every qx_gen_tac [`f`, `ts`] >>
 simp_tac (srw_ss() ++ boolSimps.DNF_ss) [MEM_MAP,EVERY_MEM] >>
 metis_tac []);
+
+val subterm_vars_SUBSET = Q.store_thm(
+"subterm_vars_SUBSET",
+`subterm t1 t2 ⇒ vars t1 ⊆ vars t2`,
+map_every qid_spec_tac [`t1`,`t2`] >>
+ho_match_mp_tac term_ind >>
+ntac 2 (srw_tac [][LIST_TO_SET_MAP]) >>
+fsrw_tac [][EVERY_MEM,SUBSET_DEF] >>
+PROVE_TAC [IN_LIST_TO_SET]);
 
 val WF_psubterm1 = Q.store_thm(
 "WF_psubterm1",
