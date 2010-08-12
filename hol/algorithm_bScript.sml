@@ -8,10 +8,16 @@ val vars_elim_def = Define`
 val meqs_vars_elim_def = Define`
   meqs_vars_elim s c = IMAGE (λmeq. (FST meq, BAG_IMAGE (vars_elim s c) (SND meq)))`;
 
+val left_vars_meqs_vars_elim = Q.store_thm(
+"left_vars_meqs_vars_elim",
+`left_vars (meqs_vars_elim s c meqs) = left_vars meqs`,
+srw_tac [DNF_ss][meqs_vars_elim_def,left_vars_def,EXTENSION]);
+val _ = export_rewrites ["left_vars_meqs_vars_elim"];
+
 val (algb1_rules,algb1_ind,algb1_cases) = Hol_reln`
   wfsystem (t1,u1) ∧
   (s,m) ∈ u1 ∧
-  DISJOINT s (BIGUNION (IMAGE FST f)) ∧
+  DISJOINT s (left_vars f) ∧
   meq_red u1 (s,m) (c,f) u2
     ⇒
   algb1 (t1,u1) (SNOC (s,{|c|}) t1, (meqs_vars_elim s c (compactify u2)) DELETE (s,{|c|}))`;
@@ -22,7 +28,7 @@ val algb_stop_def = Define`
 val algb_fail_def = Define`
   algb_fail (t,u) = ∃s m. (s,m) ∈ u ∧ m ≠ {||} ∧
                     ∀c f. common_part_frontier m (c,f) ⇒
-                          ¬ DISJOINT s (BIGUNION (IMAGE FST f))`;
+                          ¬ DISJOINT s (left_vars f)`;
 
 val BIGUNION_IMAGE_PSUBSET_lemma = Q.store_thm(
 "BIGUNION_IMAGE_PSUBSET_lemma",
@@ -34,20 +40,20 @@ PROVE_TAC [] );
 
 val vars_elim_leaves_common_part = Q.store_thm(
 "vars_elim_leaves_common_part",
-`FINITE s ∧ common_part_frontier m (c,f) ∧ (∀x. x ∈ f ⇒ DISJOINT s (FST x)) ⇒
+`FINITE s ∧ common_part_frontier m (c,f) ∧ DISJOINT s (left_vars f) ⇒
  (vars_elim s c c = c)`,
 srw_tac [][vars_elim_def] >>
 match_mp_tac (MP_CANON (FDOM_DISJOINT_vars)) >>
 srw_tac [][FUN_FMAP_DEF,IN_DISJOINT] >>
 Cases_on `x ∈ vars c` >> srw_tac [][] >>
-imp_res_tac vars_common_part_SUBSET_FST_frontier >>
+imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
 fsrw_tac [DNF_ss][SUBSET_DEF] >>
 PROVE_TAC [IN_DISJOINT]);
 
 val compactify_leaves_common_part_meq = Q.store_thm(
 "compactify_leaves_common_part_meq",
 `meq_red u1 (s,m) (c,f) u2 ∧
- (∀x. x ∈ f ⇒ DISJOINT s (FST x)) ∧
+ DISJOINT s (left_vars f) ∧
  pairwise (RC (inv_image DISJOINT FST)) u1
  ⇒ (s,{|c|}) ∈ compactify u2`,
 srw_tac [][compactify_def,meq_red_cases] >>
@@ -59,7 +65,7 @@ srw_tac [][EXTENSION,IN_DEF,EQ_IMP_THM] >>
 fsrw_tac [][EQC_DEF,RC_DEF] >>
 Cases_on `e=x` >> srw_tac [][] >>
 `?z. share_vars meqs e z ∧ e ≠ z` by metis_tac [TC_implies_one_step,symmetric_SC_identity,symmetric_share_vars] >>
-reverse (fsrw_tac [][Abbr`meqs`,Abbr`e`,share_vars_def]) >-
+reverse (fsrw_tac [][left_vars_def,Abbr`meqs`,Abbr`e`,share_vars_def]) >-
   PROVE_TAC [] >>
 fsrw_tac [][pairwise_def,RC_DEF,inv_image_def,meqs_of_def] >>
 PROVE_TAC [FST] );
@@ -68,32 +74,31 @@ val WF_algb1 = Q.store_thm( (* Part of Theorem 3.2 *)
 "WF_algb1",
 `WF (inv algb1)`,
 match_mp_tac WF_SUBSET >>
-WF_REL_TAC `inv_image (measure CARD) (BIGUNION o IMAGE FST o SND)` >>
+WF_REL_TAC `inv_image (measure CARD) (left_vars o SND)` >>
 srw_tac [DNF_ss][inv_DEF,algb1_cases] >>
 match_mp_tac (MP_CANON CARD_PSUBSET) >>
 qmatch_assum_rename_tac `wfsystem (t1,u1)` [] >>
-ntac 2 (srw_tac [SATISFY_ss][]) >>
-qmatch_abbrev_tac `BIGUNION (IMAGE FST (meqs_vars_elim s c s1 DELETE e)) PSUBSET s2` >>
+conj_tac >- ntac 2 (srw_tac [SATISFY_ss][left_vars_def]) >>
+qmatch_abbrev_tac `(left_vars (meqs_vars_elim s c s1 DELETE e)) PSUBSET s2` >>
 match_mp_tac PSUBSET_SUBSET_TRANS >>
-qexists_tac `BIGUNION (IMAGE FST (meqs_vars_elim s c s1))` >>
+qexists_tac `left_vars (meqs_vars_elim s c s1)` >>
 `wfm (s,m)` by metis_tac [wfsystem_wfm_pair] >>
-reverse (srw_tac [][]) >- (
-  `IMAGE FST (meqs_vars_elim s c s1) = IMAGE FST s1` by (
-    srw_tac [DNF_ss][EXTENSION,meqs_vars_elim_def] ) >>
+reverse conj_tac >- (
   fsrw_tac [][meq_red_cases] >>
-  srw_tac [][Abbr`s1`,Abbr`s2`,compactify_same_vars] >- (
-    srw_tac [DNF_ss,SATISFY_ss][SUBSET_DEF] )
+  srw_tac [][Abbr`s1`,Abbr`s2`,Abbr`e`] >- (
+    srw_tac [DNF_ss,SATISFY_ss][left_vars_def,SUBSET_DEF] )
   >- (
-    srw_tac [DNF_ss][Abbr`e`,SUBSET_DEF] >>
-    qexists_tac `(s,m)` >> srw_tac [][] ) >>
- srw_tac [DNF_ss][SUBSET_DEF] >>
- REWRITE_TAC [Once CONJ_COMM] >>
- match_mp_tac wfsystem_unsolved_var_in_unsolved_left >>
- map_every qexists_tac [`t1`,`s`,`m`] >>
- srw_tac [][] >>
- match_mp_tac frontier_vars_occur >>
- metis_tac [FST,SND,wfm_FINITE_BAG] ) >>
+    srw_tac [DNF_ss][left_vars_def,SUBSET_DEF] >>
+    PROVE_TAC [FST] ) >>
+  qmatch_abbrev_tac `left_vars s1 ⊆ left_vars u1` >>
+  qsuff_tac `left_vars s1 ⊆ left_vars u1 ∪ right_vars u1` >-
+    PROVE_TAC [wfsystem_unsolved_vars_SUBSET_left_vars,SUBSET_DEF,IN_UNION] >>
+  `FINITE_BAG m` by PROVE_TAC [SND,wfm_FINITE_BAG] >>
+  imp_res_tac frontier_left_vars_occur >>
+  fsrw_tac [DNF_ss][left_vars_def,right_vars_def,SUBSET_DEF,Abbr`s1`] >>
+  PROVE_TAC [FST,SND]) >>
 `FINITE s` by PROVE_TAC [wfm_def] >>
+simp_tac (std_ss) [left_vars_def] >>
 match_mp_tac BIGUNION_IMAGE_PSUBSET_lemma >>
 `s ≠ {}` by PROVE_TAC [wfm_def] >>
 `pairwise (RC (inv_image DISJOINT FST)) s1` by (
@@ -105,12 +110,12 @@ simp_tac std_ss [pairwise_def,inv_image_def,RC_DEF] >>
   unabbrev_all_tac >>
   match_mp_tac compactify_leaves_common_part_meq >>
   `pairwise (RC (inv_image DISJOINT FST)) (meqs_of (t1,u1))` by PROVE_TAC [wfsystem_def] >>
-  fsrw_tac [][pairwise_def,RC_DEF,inv_image_def,meqs_of_def] ) >>
+  fsrw_tac [][pairwise_def,RC_DEF,inv_image_def,meqs_of_def]) >>
 `BAG_IMAGE (vars_elim s c) {|c|} = {|c|}` by (
   unabbrev_all_tac >> srw_tac [][] >>
   match_mp_tac vars_elim_leaves_common_part >>
-  fsrw_tac [][meq_red_cases] ) >>
-asm_simp_tac (srw_ss())[meqs_vars_elim_def,Abbr`e`,FORALL_PROD,EXISTS_PROD] >>
+  fsrw_tac [DNF_ss][meq_red_cases,left_vars_def] ) >>
+asm_simp_tac (srw_ss())[meqs_vars_elim_def,FORALL_PROD,EXISTS_PROD,Abbr`e`] >>
 PROVE_TAC [] );
 
 val meqs_vars_elim_sound = Q.store_thm(

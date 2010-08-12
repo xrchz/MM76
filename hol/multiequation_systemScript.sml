@@ -16,7 +16,7 @@ val wfsystem_def = Define`
   wfsystem (t,u) =
     FINITE u ∧
     RES_FORALL (meqs_of (t,u)) wfm ∧
-    BIGUNION (IMAGE vars (BIGUNION (IMAGE (SET_OF_BAG o SND) (meqs_of (t,u))))) ⊆ BIGUNION (IMAGE FST (meqs_of (t,u))) ∧
+    right_vars (meqs_of (t,u)) ⊆ left_vars (meqs_of (t,u)) ∧
     pairwise (RC (inv_image DISJOINT FST)) (meqs_of (t,u)) ∧
     (∀meq. MEM meq t ⇒ BAG_CARD (SND meq) ≤ 1) ∧
     (∀i tm. i < LENGTH t ∧
@@ -50,13 +50,15 @@ val wfsystem_wfm_pair = Q.store_thm(
 srw_tac [][wfsystem_def,meqs_of_def]);
 val _ = export_rewrites["wfsystem_wfm_pair"];
 
-val wfsystem_unsolved_var_in_unsolved_left = Q.store_thm(
-"wfsystem_unsolved_var_in_unsolved_left",
-`∀t u s m tm v. wfsystem (t,u) ∧ (s,m) ∈ u ∧ tm <: m ∧ v ∈ vars tm ⇒ ∃meq. meq ∈ u ∧ v ∈ FST meq`,
-srw_tac [DNF_ss][wfsystem_def,SUBSET_DEF] >>
-first_x_assum (qspecl_then [`v`,`tm`,`(s,m)`] mp_tac) >>
+val wfsystem_unsolved_vars_SUBSET_left_vars = Q.store_thm(
+"wfsystem_unsolved_vars_SUBSET_left_vars",
+`∀t u. wfsystem (t,u) ⇒ right_vars u ⊆ left_vars u`,
+srw_tac [DNF_ss][wfsystem_def,SUBSET_DEF,left_vars_def,right_vars_def] >>
+qmatch_assum_rename_tac `meq ∈ u` [] >>
+qmatch_assum_rename_tac `v ∈ vars tm` [] >>
+first_x_assum (qspecl_then [`v`,`tm`,`meq`] mp_tac) >>
 srw_tac [][meqs_of_def,MEM_EL] >- (
-  first_x_assum (qspecl_then [`n`,`tm`,`(s,m)`] mp_tac) >>
+  first_x_assum (qspecl_then [`n`,`tm`,`meq`] mp_tac) >>
   srw_tac [][IN_DISJOINT] >>
   metis_tac [] ) >>
 srw_tac [SATISFY_ss][]);

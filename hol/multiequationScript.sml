@@ -123,6 +123,40 @@ srw_tac [][meqs_unifier_def] >>
 srw_tac [DNF_ss][BIGINTER,INTER_DEF,GSPEC_ETA] >>
 srw_tac [][FUN_EQ_THM] >> PROVE_TAC []);
 
+val left_vars_def = Define`
+  left_vars = BIGUNION o IMAGE FST`;
+
+val right_vars_def = Define`
+  right_vars = BIGUNION o IMAGE vars o BIGUNION o IMAGE (SET_OF_BAG o SND)`;
+
+val left_vars_UNION = Q.store_thm(
+"left_vars_UNION",
+`left_vars (s1 ∪ s2) = left_vars s1 ∪ left_vars s2`,
+srw_tac [][left_vars_def]);
+val _ = export_rewrites["left_vars_UNION"];
+
+val right_vars_UNION = Q.store_thm(
+"right_vars_UNION",
+`right_vars (s1 ∪ s2) = right_vars s1 ∪ right_vars s2`,
+srw_tac [][right_vars_def]);
+val _ = export_rewrites["right_vars_UNION"];
+
+val left_vars_DELETE = Q.store_thm(
+"left_vars_DELETE",
+`v ∈ left_vars s ∧ v ∉ FST e ⇒ v ∈ left_vars (s DELETE e)`,
+srw_tac [][left_vars_def] >> PROVE_TAC []);
+
+val left_vars_INSERT = Q.store_thm(
+"left_vars_INSERT",
+`left_vars (e INSERT s) = FST e ∪ left_vars s`,
+srw_tac [][left_vars_def]);
+val _ = export_rewrites["left_vars_INSERT"];
+
+val right_vars_DELETE_SUBSET = Q.store_thm(
+"right_vars_DELETE_SUBSET",
+`right_vars (s DELETE e) ⊆ right_vars s`,
+srw_tac [DNF_ss,SATISFY_ss][right_vars_def,SUBSET_DEF]);
+
 val (common_part_frontier_rules, common_part_frontier_ind, common_part_frontier_cases) = Hol_reln`
   (Var v <: m ⇒ common_part_frontier m (Var v, {({x | Var x <: m}, BAG_FILTER (λt. ∀x. t ≠ Var x) m)})) ∧
   (BAG_EVERY (λt. ∃ts. (t = App f ts) ∧ (LENGTH ts = n)) m ∧ m ≠ {||} ∧
@@ -156,10 +190,10 @@ ho_match_mp_tac common_part_frontier_ind >>
 srw_tac [SATISFY_ss][BAG_EVERY] >>
 first_x_assum (qspec_then `Var v` mp_tac) >> srw_tac [][]);
 
-val vars_common_part_SUBSET_FST_frontier = Q.store_thm(
-"vars_common_part_SUBSET_FST_frontier",
-`!m cf. common_part_frontier m cf ⇒ vars (FST cf) ⊆ BIGUNION (IMAGE FST (SND cf))`,
-ho_match_mp_tac common_part_frontier_ind >> srw_tac [][] >>
+val vars_common_part_SUBSET_left_vars_frontier = Q.store_thm(
+"vars_common_part_SUBSET_left_vars_frontier",
+`!m cf. common_part_frontier m cf ⇒ vars (FST cf) ⊆ left_vars (SND cf)`,
+ho_match_mp_tac common_part_frontier_ind >> srw_tac [][left_vars_def] >>
 srw_tac [DNF_ss][SUBSET_DEF,rich_listTheory.MAP_GENLIST,MEM_EL] >>
 fsrw_tac [DNF_ss][BAG_EVERY,rich_listTheory.EL_GENLIST,SUBSET_DEF] >>
 PROVE_TAC []);
@@ -251,24 +285,70 @@ first_x_assum (qspec_then `u` mp_tac) >> srw_tac [][] >>
 res_tac >> fsrw_tac [][] >>
 metis_tac [subterm_at_rules]);
 
-val frontier_vars_occur = Q.store_thm(
-"frontier_vars_occur",
-`∀m cf meq. common_part_frontier m cf ∧ FINITE_BAG m ∧ meq ∈ SND cf ∧ x ∈ FST meq ⇒ ∃t. t <: m ∧ x ∈ vars t`,
-srw_tac [][] >>
+val frontier_left_vars_occur = Q.store_thm(
+"frontier_left_vars_occur",
+`∀m cf. common_part_frontier m cf ∧ FINITE_BAG m ⇒
+              left_vars (SND cf) ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))`,
+srw_tac [][left_vars_def,SUBSET_DEF] >>
 imp_res_tac frontier_same_address >>
-Cases_on `meq` >>
 fsrw_tac [][terms_of_def] >>
 metis_tac [subterm_eq_subterm_at,vars_def,IN_INSERT,NOT_IN_EMPTY,vars_subterm]);
 
+val frontier_right_vars_occur = Q.store_thm(
+"frontier_right_vars_occur",
+`∀m cf. common_part_frontier m cf ∧ FINITE_BAG m ⇒
+              right_vars (SND cf) ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))`,
+srw_tac [][right_vars_def,SUBSET_DEF] >>
+imp_res_tac frontier_same_address >>
+fsrw_tac [][terms_of_def] >>
+PROVE_TAC [subterm_eq_subterm_at,subterm_vars_SUBSET,SUBSET_DEF]);
+
+val all_vars_in_frontier = Q.store_thm(
+"all_vars_in_frontier",
+`∀m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒
+              BIGUNION (IMAGE vars (SET_OF_BAG m)) ⊆ left_vars (SND cf) ∪ right_vars (SND cf)`,
+ho_match_mp_tac common_part_frontier_ind >>
+srw_tac [DNF_ss][left_vars_def,right_vars_def,SUBSET_DEF] >- (
+  qmatch_assum_rename_tac `x ∈ vars tm` [] >>
+  Cases_on `tm` >> fsrw_tac [][] >>
+  DISJ2_TAC >>
+  qmatch_assum_rename_tac `App f ts <: m` [] >>
+  qexists_tac `App f ts` >>
+  srw_tac [SATISFY_ss][] ) >>
+fsrw_tac [][BAG_EVERY] >>
+res_tac >>
+fsrw_tac [][MEM_MAP,MEM_EL] >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `i < LENGTH ts` [] >>
+first_x_assum (qspecl_then [`i`,`x`,`EL i ts`] mp_tac) >>
+srw_tac [DNF_ss][] >>
+pop_assum (qspec_then `App f ts` mp_tac) >>
+srw_tac [][] >>
+PROVE_TAC []);
+
+val frontier_vars = Q.store_thm(
+"frontier_vars",
+`!m cf. common_part_frontier m cf ∧ FINITE_BAG m ⇒
+        (BIGUNION (IMAGE vars (SET_OF_BAG m)) = left_vars (SND cf) ∪ right_vars (SND cf))`,
+srw_tac [][SET_EQ_SUBSET]
+>- PROVE_TAC [all_vars_in_frontier]
+>- PROVE_TAC [frontier_left_vars_occur]
+>- PROVE_TAC [frontier_right_vars_occur]);
+
 val meq_occurs_not_unify = Q.store_thm( (* Part of Theorem 3.1 *)
 "meq_occurs_not_unify",
-`wfm (s,m) ∧ x ∈ s ∧ common_part_frontier m (c,f) ∧ meq ∈ f ∧ x ∈ (FST meq) ⇒ (meq_unifier (s,m) = {})`,
+`wfm (s,m) ∧ x ∈ s ∧ common_part_frontier m (c,f) ∧ x ∈ left_vars f ⇒ (meq_unifier (s,m) = {})`,
 srw_tac [][wfm_def,BAG_EVERY] >>
-(frontier_vars_occur |> Q.SPECL [`m`,`(c,f)`,`meq`] |> mp_tac) >>
+(frontier_left_vars_occur |> Q.SPECL [`m`,`(c,f)`] |> mp_tac) >>
 srw_tac [][] >>
 qsuff_tac `?eqs. eqs_correspond_to_meq (s,m) eqs ∧ (set_unifier eqs = {})` >-
   metis_tac [meq_unifier_corresponds_set_unifier] >>
 (eqs_corresponding_to_meq_exists |> Q.GEN `meq` |> Q.SPEC `(s,m)` |> strip_assume_tac) >>
+fsrw_tac [DNF_ss][left_vars_def,SUBSET_DEF] >>
+qmatch_assum_rename_tac `x ∈ FST meq` [] >>
+first_x_assum (qspecl_then [`x`,`meq`] mp_tac) >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `x ∈ vars t` [] >>
 qexists_tac ` eqs ∪ {(Var x,t)}` >>
 reverse conj_tac >- (
   match_mp_tac (GEN_ALL no_cycles) >>
@@ -426,6 +506,24 @@ match_mp_tac (GEN_ALL unify_common_part_and_frontier) >>
 qexists_tac `(c,f)` >> srw_tac [][] >>
 res_tac >> fsrw_tac [][]);
 
+val meq_red_left_vars = Q.store_thm(
+"meq_red_left_vars",
+`meq_red meqs1 (s,m) (c,f) meqs2 ⇒ (left_vars meqs2 = left_vars meqs1 ∪ left_vars f)`,
+REWRITE_TAC [EXTENSION] >>
+srw_tac [DNF_ss][meq_red_cases,left_vars_def] >>
+PROVE_TAC [FST]);
+
+val meq_red_right_vars_SUBSET = Q.store_thm(
+"meq_red_right_vars_SUBSET",
+`meq_red meqs1 (s,m) cf meqs2 ∧ FINITE_BAG m ⇒ (right_vars meqs2 ⊆ right_vars meqs1)`,
+srw_tac [DNF_ss][meq_red_cases,right_vars_def,SUBSET_DEF]
+>- PROVE_TAC [] >>
+imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+imp_res_tac frontier_left_vars_occur >>
+imp_res_tac frontier_right_vars_occur >>
+fsrw_tac [DNF_ss][SUBSET_DEF,left_vars_def,right_vars_def] >>
+metis_tac [FST,SND] );
+
 val meq_merge_all_def = Define`
   meq_merge_all meqs = (BIGUNION (IMAGE FST meqs), BIG_BAG_UNION (IMAGE SND meqs))`;
 
@@ -436,11 +534,17 @@ REWRITE_TAC [EXTENSION] >>
 srw_tac [][meq_merge_all_def,terms_of_def,EQ_IMP_THM,pairTheory.EXISTS_PROD] >>
 metis_tac []);
 
-val vars_of_meq_merge_all = Q.store_thm(
-"vars_of_meq_merge_all",
+val left_vars_meq_merge_all = Q.store_thm(
+"left_vars_meq_merge_all",
 `FST (meq_merge_all meqs) = {v | ∃meq. meq ∈ meqs ∧ v ∈ FST meq}`,
 srw_tac [][meq_merge_all_def,SET_EQ_SUBSET] >>
 srw_tac [SATISFY_ss,DNF_ss][SUBSET_DEF]);
+
+val right_vars_meq_merge_all = Q.store_thm(
+"right_vars_meq_merge_all",
+`FINITE meqs ⇒ (BIGUNION (IMAGE vars (SET_OF_BAG (SND (meq_merge_all meqs)))) = right_vars meqs)`,
+srw_tac [][SET_EQ_SUBSET,meq_merge_all_def,right_vars_def] >>
+srw_tac [DNF_ss][SUBSET_DEF]);
 
 val wfm_meq_merge_all = Q.store_thm(
 "wfm_meq_merge_all",
@@ -586,13 +690,32 @@ ho_match_mp_tac STRONG_EQC_INDUCTION >>
 srw_tac [][] >>
 metis_tac [share_vars_terms_of,EQC_share_vars_implies_IN]);
 
-val compactify_same_vars = Q.store_thm(
-"compactify_same_vars",
-`BIGUNION (IMAGE FST (compactify meqs)) = BIGUNION (IMAGE FST meqs)`,
-reverse (srw_tac [][SET_EQ_SUBSET,compactify_def]) >>
-srw_tac [DNF_ss][SUBSET_DEF,vars_of_meq_merge_all] >- (
+val compactify_same_left_vars = Q.store_thm(
+"compactify_same_left_vars",
+`(left_vars (compactify meqs)) = (left_vars meqs)`,
+reverse (srw_tac [][left_vars_def,SET_EQ_SUBSET,compactify_def]) >>
+srw_tac [DNF_ss][SUBSET_DEF,left_vars_meq_merge_all] >- (
   qmatch_assum_rename_tac `x  ∈ FST meq` [] >>
   ntac 2 (qexists_tac `meq`) >> srw_tac [][EQC_REFL,IN_DEF] ) >>
 metis_tac [IN_DEF,EQC_share_vars_implies_IN]);
+val _ = export_rewrites["compactify_same_left_vars"];
+
+val compactify_same_right_vars = Q.store_thm(
+"compactify_same_right_vars",
+`FINITE meqs ⇒ ((right_vars (compactify meqs)) = right_vars meqs)`,
+strip_tac >>
+imp_res_tac right_vars_meq_merge_all >>
+pop_assum mp_tac >>
+simp_tac (srw_ss()) [right_vars_def,SET_EQ_SUBSET,compactify_def] >>
+reverse (srw_tac [DNF_ss][SUBSET_DEF,meq_merge_all_def]) >- (
+  qmatch_assum_rename_tac `x ∈ vars tm` [] >>
+  qmatch_assum_rename_tac `tm <: SND meq` [] >>
+  map_every qexists_tac [`tm`,`meq`] >>
+  srw_tac [DNF_ss][] >>
+  qexists_tac `meq` >> srw_tac [][IN_DEF] ) >>
+qpat_assum `FINITE meqs` assume_tac >>
+fsrw_tac [][] >>
+PROVE_TAC [IN_DEF,EQC_share_vars_implies_IN]);
+val _ = export_rewrites["compactify_same_right_vars"];
 
 val _ = export_theory ()
