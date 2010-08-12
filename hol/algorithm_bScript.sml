@@ -146,8 +146,8 @@ simp_tac std_ss [pairwise_def,inv_image_def,RC_DEF] >>
 `e ∈ s1` by (
   unabbrev_all_tac >>
   match_mp_tac compactify_leaves_common_part_meq >>
-  `pairwise (RC (inv_image DISJOINT FST)) (meqs_of (t1,u1))` by PROVE_TAC [wfsystem_def] >>
-  fsrw_tac [][pairwise_def,RC_DEF,inv_image_def,meqs_of_def]) >>
+  srw_tac [][pairwise_def,RC_DEF,inv_image_def] >>
+  metis_tac [wfsystem_def]) >>
 `BAG_IMAGE (vars_elim s c) {|c|} = {|c|}` by (
   unabbrev_all_tac >> srw_tac [][] >>
   match_mp_tac vars_elim_leaves_common_part >>
@@ -188,7 +188,8 @@ qmatch_abbrev_tac `A ∩ B = C ∩ A ∩ (meqs_unifier (meqs_vars_elim s c D DEL
 `e ∈ D` by (
   unabbrev_all_tac >> srw_tac [][] >>
   match_mp_tac compactify_leaves_common_part_meq >>
-  fsrw_tac [][wfsystem_def,meqs_of_def,pairwise_def] ) >>
+  fsrw_tac [][wfsystem_def,pairwise_def,RC_DEF,inv_image_def] >>
+  PROVE_TAC []) >>
 `vars_elim s c c = c` by (
   match_mp_tac vars_elim_leaves_common_part >>
   fsrw_tac [][meq_red_cases] ) >>
@@ -208,6 +209,239 @@ srw_tac [][RES_FORALL_THM] >>
 PROVE_TAC [ wfm_FINITE_BAG, wfm_compactify, RES_FORALL_THM,
             wfsystem_wfm_pair, wfm_meq_red,
             meq_red_FINITE, wfsystem_FINITE_pair] );
+
+val wfm_meqs_vars_elim = Q.store_thm(
+"wfm_meqs_vars_elim",
+`RES_FORALL meqs wfm ⇒ RES_FORALL (meqs_vars_elim s c meqs) wfm`,
+srw_tac [][RES_FORALL_THM,meqs_vars_elim_def,FORALL_PROD] >>
+Cases_on `meq` >> fsrw_tac [SATISFY_ss][wfm_def,BAG_EVERY,vars_elim_def] >>
+srw_tac [DNF_ss][] >>
+Cases_on `y` >> fsrw_tac [][] >> PROVE_TAC []);
+
+val right_vars_meqs_vars_elim_SUBSET = Q.store_thm(
+"right_vars_meqs_vars_elim_SUBSET",
+`FINITE s ∧ RES_FORALL meqs (FINITE_BAG o SND) ⇒ (right_vars (meqs_vars_elim s c meqs) ⊆ right_vars meqs ∪ vars c)`,
+strip_tac >>
+srw_tac [DNF_ss][right_vars_def,meqs_vars_elim_def,SUBSET_DEF] >>
+fsrw_tac [][RES_FORALL_THM] >>
+res_tac >> fsrw_tac [][] >>
+srw_tac [][] >>
+qpat_assum `FINITE s` assume_tac >>
+fsrw_tac [][vars_vars_elim] >>
+Cases_on `DISJOINT s (vars y)` >> fsrw_tac [SATISFY_ss][]);
+
+val meqs_vars_elim_elim_right = Q.store_thm(
+"meqs_vars_elim_elim_right",
+`FINITE s ∧ RES_FORALL meqs (FINITE_BAG o SND) ∧
+ DISJOINT s (vars c)
+ ⇒ DISJOINT s (right_vars (meqs_vars_elim s c meqs))`,
+srw_tac [DNF_ss][RES_FORALL_THM,meqs_vars_elim_def,right_vars_def] >>
+qpat_assum `x <: B` mp_tac >>
+srw_tac [][] >>
+srw_tac [][vars_vars_elim,IN_DISJOINT] >>
+PROVE_TAC [IN_DISJOINT]);
+
+val wfsystem_algb1 = Q.store_thm(
+"wfsystem_algb1",
+`algb1 sys1 sys2 ⇒ wfsystem sys2`,
+srw_tac [][algb1_cases,RES_FORALL_THM] >>
+`FINITE_BAG m` by PROVE_TAC [wfsystem_wfm_pair,wfm_FINITE_BAG,SND] >>
+`FINITE u2` by PROVE_TAC [wfsystem_FINITE,SND,meq_red_FINITE] >>
+`FINITE (compactify u2)` by PROVE_TAC [FINITE_compactify] >>
+qpat_assum `wfsystem (t1,u1)` mp_tac >>
+srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
+  srw_tac [SATISFY_ss][meqs_vars_elim_def] )
+>- (
+  fsrw_tac [][meqs_of_def,rich_listTheory.IS_EL_SNOC] >- (
+    imp_res_tac wfm_meq_red >>
+    fsrw_tac [][meq_red_cases,RES_FORALL_THM] ) >>
+  metis_tac [meq_red_FINITE,wfm_meq_red,wfm_compactify,wfm_meqs_vars_elim,RES_FORALL_THM] )
+>- (
+  fsrw_tac [DNF_ss][SUBSET_DEF,meqs_of_def] >>
+  `FINITE s` by PROVE_TAC [wfm_FINITE,FST] >>
+  srw_tac [][] >- (
+    fsrw_tac [][right_vars_def,rich_listTheory.IS_EL_SNOC] >>
+    fsrw_tac [][SET_OF_BAG_INSERT] >>
+    srw_tac [][] >- (
+      DISJ2_TAC >>
+      match_mp_tac left_vars_DELETE >>
+      srw_tac [][] >- (
+        imp_res_tac meq_red_left_vars >>
+        srw_tac [][] >>
+        fsrw_tac [][meq_red_cases] >>
+        imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+        fsrw_tac [][SUBSET_DEF] ) >>
+      fsrw_tac [][meq_red_cases] >>
+      imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+      fsrw_tac [][SUBSET_DEF,IN_DISJOINT] >>
+      PROVE_TAC [] ) >>
+    srw_tac [][LIST_TO_SET_SNOC] >>
+    fsrw_tac [DNF_ss][] >>
+    qmatch_assum_rename_tac `x ∈ vars tm` [] >>
+    qmatch_assum_rename_tac `tm <: SND meq` [] >>
+    ntac 2 (first_x_assum (qspecl_then [`x`,`tm`,`meq`] mp_tac)) >>
+    ntac 2 (srw_tac [][]) >>
+    Cases_on `x ∈ s` >> srw_tac [][] >>
+    DISJ2_TAC >>
+    match_mp_tac left_vars_DELETE >>
+    srw_tac [][] >>
+    imp_res_tac meq_red_left_vars >>
+    srw_tac [][] ) >>
+  `x ∈ right_vars (meqs_vars_elim s c (compactify u2))` by PROVE_TAC [right_vars_DELETE_SUBSET,SUBSET_DEF] >>
+  srw_tac [][LIST_TO_SET_SNOC] >>
+  `RES_FORALL (compactify u2) (FINITE_BAG o SND)` by (
+    srw_tac [][RES_FORALL_THM] >>
+    PROVE_TAC [wfm_FINITE_BAG,wfm_meq_red,wfm_compactify,RES_FORALL_THM] ) >>
+  `right_vars (meqs_vars_elim s c (compactify u2)) ⊆ right_vars (compactify u2) ∪ vars c` by (
+    match_mp_tac right_vars_meqs_vars_elim_SUBSET >>
+    srw_tac [][RES_FORALL_THM] ) >>
+  qpat_assum `FINITE u2` assume_tac >>
+  fsrw_tac [][SUBSET_DEF] >>
+  Cases_on `x ∈ right_vars u2` >- (
+    `x ∈ left_vars (set t1) ∨ x ∈ left_vars u1` by PROVE_TAC [meq_red_right_vars_SUBSET,SUBSET_DEF] >>
+    srw_tac [][] >>
+    DISJ2_TAC >>
+    match_mp_tac left_vars_DELETE >>
+    srw_tac [][] >- (
+      imp_res_tac meq_red_left_vars >>
+      srw_tac [][] ) >>
+    `DISJOINT s (right_vars (meqs_vars_elim s c (compactify u2)))` by (
+      match_mp_tac meqs_vars_elim_elim_right >>
+      srw_tac [][] >>
+      fsrw_tac [][meq_red_cases] >>
+      metis_tac [FST,SND,vars_common_part_SUBSET_left_vars_frontier,IN_DISJOINT,SUBSET_DEF] ) >>
+  PROVE_TAC [IN_DISJOINT] ) >>
+  `x ∈ vars c` by PROVE_TAC [] >>
+  fsrw_tac [][meq_red_cases] >>
+  imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+  fsrw_tac [][SUBSET_DEF] >>
+  Cases_on `x ∈ s` >> srw_tac [][] >>
+  DISJ2_TAC >>
+  match_mp_tac left_vars_DELETE >>
+  srw_tac [][] )
+>- (
+  `i < LENGTH t1` by DECIDE_TAC >>
+  Cases_on `j < LENGTH t1` >- (
+    fsrw_tac [SATISFY_ss][rich_listTheory.EL_SNOC] >>
+    PROVE_TAC []) >>
+  `j = LENGTH t1` by DECIDE_TAC >>
+  fsrw_tac [][rich_listTheory.EL_LENGTH_SNOC,rich_listTheory.EL_SNOC,IN_DISJOINT] >>
+  PROVE_TAC [FST,MEM_EL] )
+>- (
+  fsrw_tac [][meqs_vars_elim_def] >>
+  `pairwise (RC (inv_image DISJOINT FST)) (compactify u2)` by MATCH_ACCEPT_TAC compactified_vars_disjoint >>
+  pop_assum mp_tac >>
+  simp_tac (srw_ss()) [pairwise_def,RC_DEF,inv_image_def] >>
+  metis_tac [] )
+>- (
+  `(s,{|c|}) ∈ compactify u2` by (
+    match_mp_tac compactify_leaves_common_part_meq >>
+    srw_tac [][pairwise_def,RC_DEF,inv_image_def] >>
+    PROVE_TAC [] ) >>
+  fsrw_tac [][meqs_vars_elim_def] >>
+  `vars_elim s c c = c` by (
+    match_mp_tac vars_elim_leaves_common_part >>
+    fsrw_tac [][meq_red_cases,meqs_of_def] >>
+    PROVE_TAC [wfm_FINITE,FST] ) >>
+  `meq ≠ (s,{|c|})` by (
+    spose_not_then strip_assume_tac >>
+    fsrw_tac [][] ) >>
+  Cases_on `meq1 = (s,{|c|})` >- (
+    `pairwise (RC (inv_image DISJOINT FST)) (compactify u2)` by MATCH_ACCEPT_TAC compactified_vars_disjoint >>
+    pop_assum mp_tac >>
+    simp_tac (srw_ss()) [pairwise_def,RC_DEF,inv_image_def] >>
+    metis_tac [FST] ) >>
+  fsrw_tac [][rich_listTheory.IS_EL_SNOC] >>
+  qsuff_tac `FST meq ⊆ left_vars u1 ∪ BIGUNION (IMAGE vars (SET_OF_BAG m))` >- (
+    fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,left_vars_def,MEM_EL] >>
+    qx_gen_tac `x` >>
+    reverse (Cases_on `x ∈ FST meq`) >- srw_tac [][] >>
+    disch_then (qspec_then `x` mp_tac) >>
+    asm_simp_tac (srw_ss()) [] >>
+    strip_tac >- PROVE_TAC [] >>
+    qmatch_assum_rename_tac `tm <: m` [] >>
+    first_x_assum (qspecl_then [`n`,`tm`,`(s,m)`,`x`] mp_tac) >>
+    srw_tac [][] ) >>
+  match_mp_tac SUBSET_TRANS >>
+  qexists_tac `left_vars (compactify u2)` >>
+  conj_tac >- (
+    simp_tac std_ss [left_vars_def] >>
+    match_mp_tac SUBSET_BIGUNION_I >>
+    PROVE_TAC [IN_IMAGE] ) >>
+  `left_vars u2 = left_vars u1 ∪ left_vars f` by PROVE_TAC [meq_red_left_vars] >>
+  `left_vars f ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))` by (
+    fsrw_tac [][meq_red_cases] >>
+    PROVE_TAC [frontier_vars,SND,SUBSET_UNION,SUBSET_TRANS] ) >>
+  asm_simp_tac (srw_ss()) [] >>
+  PROVE_TAC [SUBSET_UNION,SUBSET_TRANS] )
+>- (
+  fsrw_tac [][rich_listTheory.IS_EL_SNOC,BAG_CARD_THM] )
+>- (
+  `i < LENGTH t1` by DECIDE_TAC >>
+  Cases_on `j < LENGTH t1` >- (
+    fsrw_tac [SATISFY_ss][rich_listTheory.EL_SNOC] ) >>
+  `j = LENGTH t1` by DECIDE_TAC >>
+  fsrw_tac [][rich_listTheory.EL_LENGTH_SNOC,rich_listTheory.EL_SNOC,IN_DISJOINT] >>
+  qx_gen_tac `v` >>
+  Cases_on `v ∈ vars c` >> srw_tac [][] >>
+  fsrw_tac [][meq_red_cases] >>
+  imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+  fsrw_tac [DNF_ss][SUBSET_DEF] >>
+  `v ∈ left_vars f` by PROVE_TAC [] >>
+  imp_res_tac frontier_left_vars_occur >>
+  qpat_assum `FINITE_BAG m` assume_tac >>
+  fsrw_tac [DNF_ss][SUBSET_DEF] >>
+  PROVE_TAC [SND])
+>- (
+  `RES_FORALL (compactify u2) wfm` by (
+    match_mp_tac wfm_compactify >>
+    conj_tac >- srw_tac [][] >>
+    match_mp_tac (GEN_ALL wfm_meq_red) >>
+    map_every qexists_tac [`u1`,`(s,m)`,`(c,f)`] >>
+    srw_tac [][RES_FORALL_THM] >>
+    fsrw_tac [][meqs_of_def] ) >>
+  fsrw_tac [][meqs_of_def] >>
+  `FINITE s` by PROVE_TAC [wfm_FINITE,FST] >>
+  Cases_on `i = LENGTH t1` >- (
+    fsrw_tac [][rich_listTheory.EL_LENGTH_SNOC,meqs_vars_elim_def] >>
+    srw_tac [][] >>
+    fsrw_tac [][RES_FORALL_THM] >>
+    srw_tac [][vars_vars_elim] >>
+    srw_tac [][IN_DISJOINT] >-
+      PROVE_TAC [] >>
+    fsrw_tac [][meq_red_cases] >>
+    imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+    fsrw_tac [][SUBSET_DEF,IN_DISJOINT] >>
+    PROVE_TAC [] ) >>
+  `i < LENGTH t1` by DECIDE_TAC >>
+  srw_tac [][rich_listTheory.EL_SNOC] >>
+  `right_vars (meqs_vars_elim s c (compactify u2)) ⊆ right_vars (compactify u2) ∪ vars c` by (
+    match_mp_tac right_vars_meqs_vars_elim_SUBSET >>
+    srw_tac [][RES_FORALL_THM] ) >>
+  qpat_assum `FINITE u2` assume_tac >>
+  fsrw_tac [][] >>
+  `right_vars u2 ⊆ right_vars u1` by PROVE_TAC [meq_red_right_vars_SUBSET] >>
+  `vars tm ⊆ right_vars (meqs_vars_elim s c (compactify u2))` by (
+    srw_tac [SATISFY_ss,DNF_ss][right_vars_def,SUBSET_DEF] ) >>
+  fsrw_tac [][meq_red_cases] >>
+  `vars c ⊆ left_vars f` by PROVE_TAC [FST,SND,vars_common_part_SUBSET_left_vars_frontier] >>
+  `left_vars f ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))` by PROVE_TAC [SND,frontier_left_vars_occur] >>
+  fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,right_vars_def] >>
+  metis_tac [SND] )
+);
+
+val wfsystem_algb = save_thm(
+"wfsystem_algb",
+RTC_lifts_invariants
+|> Q.GEN `P` |> Q.ISPEC `wfsystem`
+|> Q.GEN `R` |> Q.ISPEC `algb1`
+|> UNDISCH
+|> PROVE_HYP (
+     wfsystem_algb1
+     |> DISCH ``wfsystem sys1``
+     |> SIMP_RULE bool_ss [AND_IMP_INTRO]
+     |> Q.GEN `sys2` |> Q.GEN `sys1`)
+|> Q.SPEC `sys1` |> Q.SPEC `sys2`);
 
 (*
 val algb1_example0 = Q.store_thm(

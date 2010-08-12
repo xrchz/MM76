@@ -17,7 +17,11 @@ val wfsystem_def = Define`
     FINITE u ∧
     RES_FORALL (meqs_of (t,u)) wfm ∧
     right_vars (meqs_of (t,u)) ⊆ left_vars (meqs_of (t,u)) ∧
-    pairwise (RC (inv_image DISJOINT FST)) (meqs_of (t,u)) ∧
+    (∀meq1 meq2.
+      ((∃i j. (meq1 = EL i t) ∧ (meq2 = EL j t) ∧ i < j ∧ j < LENGTH t) ∨
+       (meq1 ∈ u ∧ meq2 ∈ u ∧ meq1 ≠ meq2) ∨
+       (MEM meq1 t ∧ meq2 ∈ u)) ⇒
+      DISJOINT (FST meq1) (FST meq2)) ∧
     (∀meq. MEM meq t ⇒ BAG_CARD (SND meq) ≤ 1) ∧
     (∀i tm. i < LENGTH t ∧
             ((∃j. tm <: (SND (EL j t)) ∧ i < j ∧ j < LENGTH t) ∨
