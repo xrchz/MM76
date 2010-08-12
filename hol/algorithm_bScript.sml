@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib boolSimps SatisfySimps Parse pairTheory stringTheory substitutionTheory multiequationTheory multiequation_systemTheory pred_setTheory listTheory relationTheory bagTheory finite_mapTheory lcsymtacs
+open HolKernel boolLib bossLib boolSimps SatisfySimps Parse pairTheory stringTheory termTheory substitutionTheory multiequationTheory multiequation_systemTheory pred_setTheory listTheory relationTheory bagTheory finite_mapTheory lcsymtacs
 
 val _ = new_theory "algorithm_b"
 
@@ -7,6 +7,43 @@ val vars_elim_def = Define`
 
 val meqs_vars_elim_def = Define`
   meqs_vars_elim s c = IMAGE (λmeq. (FST meq, BAG_IMAGE (vars_elim s c) (SND meq)))`;
+
+val vars_vars_elim = Q.store_thm(
+"vars_vars_elim",
+`FINITE s ⇒ (vars (vars_elim s c t) = if DISJOINT s (vars t) then vars t else vars t DIFF s ∪ vars c)`,
+strip_tac >>
+Cases_on `DISJOINT s (vars t)` >> srw_tac [][] >- (
+  pop_assum mp_tac >>
+  qid_spec_tac `t` >>
+  ho_match_mp_tac term_ind >>
+  srw_tac [][vars_elim_def,LIST_TO_SET_MAP,IN_DISJOINT,FLOOKUP_FUN_FMAP,MEM_MAP,EVERY_MEM] >>
+  srw_tac [][SET_EQ_SUBSET] >>
+  srw_tac [][SUBSET_DEF] >>
+  PROVE_TAC [] ) >>
+pop_assum mp_tac >>
+qid_spec_tac `t` >>
+ho_match_mp_tac term_ind >>
+srw_tac [][vars_elim_def,FLOOKUP_FUN_FMAP,IN_DISJOINT,LIST_TO_SET_MAP,EVERY_MEM] >>
+srw_tac [][SET_EQ_SUBSET] >> srw_tac [DNF_ss][SUBSET_DEF] >- (
+  qmatch_assum_rename_tac `y ∈ vars X` ["X"] >>
+  Cases_on `y ∈ vars c` >> srw_tac [][] >>
+  `y ∈ vars a` by (
+    match_mp_tac NOTIN_rangevars_IN_vars >>
+    qexists_tac `FUN_FMAP (K c) s` >>
+    srw_tac [DNF_ss][rangevars_def] ) >>
+  Cases_on `y ∈ s` >> srw_tac [SATISFY_ss][] >>
+  first_x_assum (qspec_then `a` mp_tac) >>
+  srw_tac [SATISFY_ss][EXTENSION] >>
+  PROVE_TAC [] )
+>- (
+  qmatch_assum_rename_tac `y ∉ s` [] >>
+  qmatch_assum_rename_tac `y ∈ vars t` [] >>
+  qexists_tac `t` >> srw_tac [][] >>
+  match_mp_tac NOTIN_FDOM_IN_vars >>
+  srw_tac [][FUN_FMAP_DEF] ) >>
+qmatch_assum_rename_tac `x ∈ vars t` [] >>
+qexists_tac `t` >> srw_tac [][] >>
+res_tac >> srw_tac [][]);
 
 val left_vars_meqs_vars_elim = Q.store_thm(
 "left_vars_meqs_vars_elim",
