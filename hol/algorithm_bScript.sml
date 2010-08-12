@@ -443,6 +443,23 @@ RTC_lifts_invariants
      |> Q.GEN `sys2` |> Q.GEN `sys1`)
 |> Q.SPEC `sys1` |> Q.SPEC `sys2`);
 
+val algb_complete = Q.store_thm( (* Part of Theorem 3.2 *)
+"algb_complete",
+`algb_stop sys1 sys2 ∧ algb_fail sys2 ⇒ (meqs_unifier (meqs_of sys2) = {})`,
+srw_tac [][algb_stop_def] >>
+qsuff_tac `wfsystem sys2` >- (
+  strip_tac >>
+  Cases_on `sys2` >> fsrw_tac [DNF_ss][algb_fail_def,algb_stop_def,meqs_of_def,meqs_unifier_def] >>
+  srw_tac [DNF_ss][Once EXTENSION] >>
+  DISJ2_TAC >>
+  qexists_tac `(s,m)` >>
+  `FINITE_BAG m` by PROVE_TAC [wfsystem_wfm_pair,wfm_FINITE_BAG,SND] >>
+  reverse (Cases_on `?c f. common_part_frontier m (c,f)`) >- (
+    metis_tac [pair_CASES,no_common_part,EXTENSION,NOT_IN_EMPTY] ) >>
+  fsrw_tac [][IN_DISJOINT] >>
+  metis_tac [wfsystem_wfm_pair,FST,meq_occurs_not_unify,EXTENSION,NOT_IN_EMPTY] ) >>
+PROVE_TAC [wfsystem_algb]);
+
 (*
 val algb1_example0 = Q.store_thm(
 "algb1_example0",
