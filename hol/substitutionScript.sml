@@ -29,6 +29,17 @@ C MATCH_MP psubterm1_mono_SAPPLY);
 val rangevars_def = Define`
   rangevars s = BIGUNION (IMAGE vars (FRANGE s))`;
 
+val FINITE_rangevars = Q.store_thm(
+"FINITE_rangevars",
+`FINITE (rangevars s)`,
+SRW_TAC [][rangevars_def] THEN SRW_TAC [][]);
+val _ = export_rewrites ["FINITE_rangevars"];
+
+val IN_FRANGE_rangevars = Q.store_thm(
+"IN_FRANGE_rangevars",
+`t ∈ FRANGE s ⇒ vars t SUBSET rangevars s`,
+SRW_TAC [][rangevars_def,SUBSET_DEF] THEN METIS_TAC []);
+
 val FDOM_DISJOINT_vars = Q.store_thm(
 "FDOM_DISJOINT_vars",
 `DISJOINT (FDOM s) (vars t) ⇒ (SAPPLY s t = t)`,
