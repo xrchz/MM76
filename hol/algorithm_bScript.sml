@@ -228,6 +228,7 @@ res_tac >> fsrw_tac [][] >>
 srw_tac [][] >>
 qpat_assum `FINITE s` assume_tac >>
 fsrw_tac [][vars_vars_elim] >>
+qmatch_assum_rename_tac `y <: SND meq` [] >>
 Cases_on `DISJOINT s (vars y)` >> fsrw_tac [SATISFY_ss][]);
 
 val meqs_vars_elim_elim_right = Q.store_thm(
@@ -622,6 +623,7 @@ fsrw_tac [DNF_ss][BAG_EVERY,rich_listTheory.EL_GENLIST,SUBSET_DEF] >>
 qmatch_assum_rename_tac `i < n` [] >>
 first_x_assum (qspecl_then [`i`,`x`] mp_tac) >>
 srw_tac [][] >>
+qmatch_assum_rename_tac `y <: m` [] >>
 qexists_tac `y` >>
 res_tac >> fsrw_tac [][] >>
 srw_tac [SATISFY_ss,DNF_ss][MEM_MAP,MEM_EL]);
