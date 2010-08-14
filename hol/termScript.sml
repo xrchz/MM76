@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse listTheory pred_setTheory relationTheory prim_recTheory arithmeticTheory lcsymtacs
+open HolKernel boolLib bossLib Parse listTheory pred_setTheory relationTheory prim_recTheory arithmeticTheory bagTheory lcsymtacs
 
 val _ = new_theory "term"
 
@@ -38,6 +38,14 @@ val vars_def = new_recursive_definition {
 };
 val _ = export_rewrites ["vars_def"];
 
+val varb_def = new_recursive_definition {
+  def = ``(varb (Var x) = {|x|}) ∧
+          (varb (App f ts) = BIG_BAG_UNION (set (MAP varb ts)))``,
+  name = "varb_def",
+  rec_axiom = term_ax'
+};
+val _ = export_rewrites ["varb_def"];
+
 val subterms_smaller = Q.store_thm(
 "subterms_smaller",
 `∀ts t. MEM t ts ⇒ measure (term_size f1 f2) t (App f ts)`,
@@ -53,6 +61,25 @@ ho_match_mp_tac term_ind >>
 srw_tac [][EVERY_MEM,MEM_MAP] >>
 srw_tac [][]);
 val _ = export_rewrites ["FINITE_vars"];
+
+val FINITE_BAG_varb = Q.store_thm(
+"FINITE_BAG_varb",
+`FINITE_BAG (varb t)`,
+qid_spec_tac `t` >>
+ho_match_mp_tac term_ind >>
+srw_tac [][EVERY_MEM,MEM_MAP,LIST_TO_SET_MAP] >>
+match_mp_tac FINITE_BIG_BAG_UNION >>
+srw_tac [][] >> srw_tac [][]);
+val _ = export_rewrites ["FINITE_BAG_varb"];
+
+val IN_varb_vars = Q.store_thm(
+"IN_varb_vars",
+`BAG_IN e (varb t) ⇔ e ∈ vars t`,
+qid_spec_tac `t` >>
+ho_match_mp_tac term_ind >>
+srw_tac [][EVERY_MEM,MEM_MAP] >>
+PROVE_TAC []);
+val _ = export_rewrites ["IN_varb_vars"];
 
 val fsym_count_def = new_recursive_definition {
   name = "fsym_count_def",
