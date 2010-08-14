@@ -612,22 +612,6 @@ val BAG_IMAGE_EQ_EMPTY = Q.store_thm(
 STRUCT_CASES_TAC (SPEC_ALL BAG_cases) THEN
 SRW_TAC [][GSYM AND_IMP_INTRO]);
 
-val vars_common_part_SUBSET = Q.store_thm(
-"vars_common_part_SUBSET",
-`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ vars (FST cf) ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))`,
-ho_match_mp_tac common_part_frontier_ind >>
-srw_tac [DNF_ss][] >- (
-  qexists_tac `Var v` >> srw_tac [][] ) >>
-srw_tac [DNF_ss][SUBSET_DEF,rich_listTheory.MAP_GENLIST,MEM_EL] >>
-fsrw_tac [DNF_ss][BAG_EVERY,rich_listTheory.EL_GENLIST,SUBSET_DEF] >>
-qmatch_assum_rename_tac `i < n` [] >>
-first_x_assum (qspecl_then [`i`,`x`] mp_tac) >>
-srw_tac [][] >>
-qmatch_assum_rename_tac `y <: m` [] >>
-qexists_tac `y` >>
-res_tac >> fsrw_tac [][] >>
-srw_tac [SATISFY_ss,DNF_ss][MEM_MAP,MEM_EL]);
-
 val INJ_IMAGE_DELETE = Q.store_thm(
 "INJ_IMAGE_DELETE",
 `INJ f s t ∧ x ∈ s ⇒ (IMAGE f (s DELETE x) = IMAGE f s DELETE (f x))`,
@@ -641,42 +625,5 @@ srw_tac [][meqs_unifier_def] >>
 Cases_on `meq ∈ meqs` >> srw_tac [][] >>
 srw_tac [DNF_ss][BIGINTER,INTER_DEF,GSPEC_ETA] >>
 srw_tac [][FUN_EQ_THM] >> PROVE_TAC []);
-
-val frontier_left_FINITE = Q.store_thm(
-"frontier_left_FINITE",
-`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) (FINITE o FST)`,
-ho_match_mp_tac common_part_frontier_ind >>
-ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM]) >>
-`{x | Var x <: m} = IMAGE (term_case I ARB) (SET_OF_BAG (BAG_FILTER (\t. ?v. t = Var v) m))` by (
-  srw_tac [DNF_ss][EXTENSION,EQ_IMP_THM] ) >>
-srw_tac [][]);
-
-val frontier_left_nonempty = Q.store_thm(
-"frontier_left_nonempty",
-`!m cf. common_part_frontier m cf ⇒ RES_FORALL (SND cf) ($<> {} o FST)`,
-ho_match_mp_tac common_part_frontier_ind >>
-ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM,NOT_EQUAL_SETS]));
-
-val frontier_right_FINITE_BAG = Q.store_thm(
-"frontier_right_FINITE_BAG",
-`!m cf. common_part_frontier m cf ⇒ FINITE_BAG m ⇒ RES_FORALL (SND cf) (FINITE_BAG o SND)`,
-ho_match_mp_tac common_part_frontier_ind >>
-ntac 2 (srw_tac [SATISFY_ss][RES_FORALL_THM]));
-
-val frontier_right_not_var = Q.store_thm(
-"frontier_right_not_var",
-`!m cf. common_part_frontier m cf ⇒ ∀t meq. meq ∈ SND cf ∧ t <: SND meq ⇒ (∀x. t ≠ Var x)`,
-ho_match_mp_tac common_part_frontier_ind >>
-ntac 2 (srw_tac [SATISFY_ss][]));
-
-val wfm_frontier = Q.store_thm( (* Don't know why mutual induction didn't work when I tried *)
-"wfm_frontier",
-`common_part_frontier m (c,f) ∧ wfm (s,m) ⇒ RES_FORALL f wfm`,
-srw_tac [][RES_FORALL_THM,FORALL_PROD,wfm_def,BAG_EVERY] >>
-imp_res_tac frontier_left_FINITE >>
-imp_res_tac frontier_left_nonempty >>
-imp_res_tac frontier_right_FINITE_BAG >>
-fsrw_tac [][RES_FORALL_THM,FORALL_PROD] >>
-metis_tac [frontier_right_not_var,SND]);
 
 val _ = export_theory ()
