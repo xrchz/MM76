@@ -73,6 +73,11 @@ val wfs_no_cycles = Q.store_thm(
      ] THEN SRW_TAC [ARITH_ss] [ADD1])
   THEN METIS_TAC []);
 
+val SAPPLY_FAPPLY = Q.store_thm(
+"SAPPLY_FAPPLY",
+`v IN FDOM s ==> (s ' v = SAPPLY s (Var v))`,
+SRW_TAC [][SAPPLY_def,FLOOKUP_DEF]);
+
 val noids_def = Define`
   noids s = ∀v. FLOOKUP s v ≠ SOME (Var v)`;
 
