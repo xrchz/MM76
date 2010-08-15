@@ -29,7 +29,7 @@ val wfsystem_def = Define`
       DISJOINT (FST meq1) (FST meq2)) ∧
     (∀meq. MEM meq t ⇒ (BAG_CARD (SND meq) = 1)) ∧
     (∀i tm. i < LENGTH t ∧
-            ((∃j. tm <: (SND (EL j t)) ∧ i < j ∧ j < LENGTH t) ∨
+            ((∃j. tm <: (SND (EL j t)) ∧ i ≤ j ∧ j < LENGTH t) ∨
              tm ∈ BIGUNION (IMAGE (SET_OF_BAG o SND) u))
             ⇒ DISJOINT (FST (EL i t)) (vars tm))`;
 

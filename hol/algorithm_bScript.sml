@@ -378,10 +378,16 @@ srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
 >- (
   fsrw_tac [][rich_listTheory.IS_EL_SNOC,BAG_CARD_THM] )
 >- (
-  `i < LENGTH t1` by DECIDE_TAC >>
   Cases_on `j < LENGTH t1` >- (
-    fsrw_tac [SATISFY_ss][rich_listTheory.EL_SNOC] ) >>
+    `i < LENGTH t1` by DECIDE_TAC >>
+    fsrw_tac [SATISFY_ss][EL_SNOC] ) >>
   `j = LENGTH t1` by DECIDE_TAC >>
+  Cases_on `i = j` >- (
+    fsrw_tac [][EL_LENGTH_SNOC,meq_red_cases] >>
+    imp_res_tac vars_common_part_SUBSET_left_vars_frontier >>
+    fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT] >>
+    PROVE_TAC [] ) >>
+  `i < LENGTH t1` by DECIDE_TAC >>
   fsrw_tac [][rich_listTheory.EL_LENGTH_SNOC,rich_listTheory.EL_SNOC,IN_DISJOINT] >>
   qx_gen_tac `v` >>
   Cases_on `v ∈ vars c` >> srw_tac [][] >>
