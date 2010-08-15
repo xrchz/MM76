@@ -12,6 +12,11 @@ val meqs_of_pair_rewrite = Q.store_thm(
 `meqs_of (t,u) = set t ∪ u`,
 srw_tac [][meqs_of_def]);
 
+(* We differ from the text by requiring the bags in the t part to
+   have cardinality = 1 rather than ≤ 1.
+   The only time they would have cardinality 0 is when the
+   remaining equations from the u part are transferred to the t part,
+   and we don't explicitly perform that step. *)
 val wfsystem_def = Define`
   wfsystem (t,u) =
     FINITE u ∧
@@ -22,7 +27,7 @@ val wfsystem_def = Define`
        (meq1 ∈ u ∧ meq2 ∈ u ∧ meq1 ≠ meq2) ∨
        (MEM meq1 t ∧ meq2 ∈ u)) ⇒
       DISJOINT (FST meq1) (FST meq2)) ∧
-    (∀meq. MEM meq t ⇒ BAG_CARD (SND meq) ≤ 1) ∧
+    (∀meq. MEM meq t ⇒ (BAG_CARD (SND meq) = 1)) ∧
     (∀i tm. i < LENGTH t ∧
             ((∃j. tm <: (SND (EL j t)) ∧ i < j ∧ j < LENGTH t) ∨
              tm ∈ BIGUNION (IMAGE (SET_OF_BAG o SND) u))
