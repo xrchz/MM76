@@ -136,11 +136,11 @@ POP_ASSUM MP_TAC THEN
 Cases_on `s ' v` THEN
 SRW_TAC [][vR_def,FLOOKUP_DEF]);
 
-val TC_vR_vars_FRANGE = Q.store_thm(
-"TC_vR_vars_FRANGE",
-`∀u v. (vR s)^+ u v ⇒ v IN FDOM s ⇒ u IN BIGUNION (IMAGE vars (FRANGE s))`,
+val TC_vR_rangevars = Q.store_thm(
+"TC_vR_rangevars",
+`∀u v. (vR s)^+ u v ⇒ v IN FDOM s ⇒ u IN rangevars s`,
 HO_MATCH_MP_TAC TC_STRONG_INDUCT_RIGHT1 THEN
-SRW_TAC [][vR_def] THEN1 (
+SRW_TAC [][vR_def,rangevars_def] THEN1 (
   Cases_on `FLOOKUP s v` THEN FULL_SIMP_TAC (srw_ss()) [FLOOKUP_DEF] THEN
   Q.EXISTS_TAC `vars x` THEN SRW_TAC [][] THEN SRW_TAC [][FRANGE_DEF] THEN
   Q.EXISTS_TAC `s ' v` THEN SRW_TAC [][] THEN
@@ -158,9 +158,9 @@ STRIP_TAC THEN IMP_RES_TAC idempotent_rangevars THEN
 FULL_SIMP_TAC (srw_ss()) [rangevars_def] THEN
 SRW_TAC [][wfs_no_cycles] THEN
 SPOSE_NOT_THEN STRIP_ASSUME_TAC THEN
-IMP_RES_TAC TC_vR_vars_FRANGE THEN
+IMP_RES_TAC TC_vR_rangevars THEN
 IMP_RES_TAC TC_CASES2 THEN
-FULL_SIMP_TAC (srw_ss()) [vR_def,FLOOKUP_DEF] THEN
+FULL_SIMP_TAC (srw_ss()) [rangevars_def,vR_def,FLOOKUP_DEF] THEN
 Cases_on `v IN FDOM s` THEN FULL_SIMP_TAC (srw_ss()) [] THEN
 RES_TAC THEN SRW_TAC [][] THEN
 PROVE_TAC [IN_DISJOINT]);
