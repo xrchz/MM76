@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib boolSimps SatisfySimps Parse multiequationTheory pred_setTheory listTheory lcsymtacs
+open HolKernel boolLib bossLib boolSimps SatisfySimps Parse multiequationTheory pred_setTheory listTheory triangular_substitutionTheory bagTheory finite_mapTheory pairTheory relationTheory lcsymtacs
 
 val _ = new_theory "multiequation_system"
 
@@ -71,5 +71,112 @@ srw_tac [][meqs_of_def,MEM_EL] >- (
   srw_tac [][IN_DISJOINT] >>
   metis_tac [] ) >>
 srw_tac [SATISFY_ss][]);
+
+val system_subst_def = Define
+`system_subst sys =
+ FUN_FMAP
+ (λx. @tm. ∃s m.((MEM (s,m) (FST sys) ∧ x ∈ s ∧ tm <: m) ∨
+                 (s,m) ∈ (SND sys) ∧ x ∈ REST s ∧ (tm = Var (CHOICE s))))
+ (left_vars (set (FST sys)) ∪
+  left_vars (IMAGE (λ(s,m). (REST s, m)) (SND sys)))`;
+
+val wfsystem_wfs = Q.store_thm(
+"wfsystem_wfs",
+`wfsystem sys ⇒ wfs (system_subst sys)`,
+srw_tac [][wfs_def] >>
+`?t u. sys = (t,u)` by (Cases_on `sys` >> srw_tac [][]) >>
+srw_tac [][] >>
+match_mp_tac WF_SUBSET >>
+WF_REL_TAC `measure (λv. @i. (∃n s m. (n < LENGTH t) ∧ (EL n t = (s,m)) ∧ v ∈ s ∧ (i = 2 + LENGTH t - n)) ∨
+                             (∃s m. (s,m) ∈ u ∧ v ∈ (REST s) ∧ (i = 1)) ∨
+                             ((∀n. n < LENGTH t ⇒ v ∉ (FST (EL n t))) ∧
+                              (∀s m. (s,m) ∈ u ⇒ v ∉ (REST s)) ∧
+                              (i = 0)))` >>
+`FINITE (left_vars (set t) ∪
+         left_vars (IMAGE (λ(s,m). (REST s, m)) u))` by (
+  srw_tac [][left_vars_def,EXISTS_PROD] >>
+  PROVE_TAC [FINITE_REST,wfsystem_FINITE_pair,IMAGE_FINITE,wfsystem_wfm_pair,FST,wfm_FINITE] ) >>
+fsrw_tac [DNF_ss][vR_def,system_subst_def,FLOOKUP_FUN_FMAP,left_vars_def] >>
+map_every qx_gen_tac [`v2`,`v1`] >>
+qmatch_abbrev_tac `(case if X then SOME Y else NONE of NONE -> F || SOME tm -> v2 ∈ vars tm) ⇒ A` >>
+reverse (Cases_on `X = T`) >- srw_tac [][] >>
+asm_simp_tac (srw_ss()) [] >>
+Q.UNABBREV_TAC `X` >>
+Q.UNABBREV_TAC `Y` >>
+SELECT_ELIM_TAC >>
+conj_tac >- (
+  unabbrev_all_tac >>
+  reverse (fsrw_tac [][EXISTS_PROD]) >>
+  fsrw_tac [][wfsystem_def] >- PROVE_TAC [] >>
+  qmatch_assum_rename_tac `MEM (vs,ms) t` [] >>
+  `BAG_CARD ms = 1` by PROVE_TAC [SND] >>
+  fsrw_tac [][meqs_of_def,RES_FORALL_THM] >>
+  `FINITE_BAG ms` by PROVE_TAC [wfm_FINITE_BAG,SND] >>
+  full_simp_tac pure_ss [arithmeticTheory.ONE] >>
+  fsrw_tac [][BCARD_SUC] >> srw_tac [][] >>
+  fsrw_tac [][BCARD_0] >> srw_tac [][] >>
+  PROVE_TAC [BAG_IN_BAG_INSERT] ) >>
+pop_assum (K ALL_TAC) >>
+fsrw_tac [DNF_ss][] >>
+conj_tac >>
+srw_tac [][] >>
+unabbrev_all_tac >>
+fsrw_tac [][wfsystem_def] >>
+fsrw_tac [][FORALL_PROD] >>
+fsrw_tac [][EXISTS_PROD] >>
+fsrw_tac [][MEM_EL,IN_DISJOINT] >- (
+  SELECT_ELIM_TAC >>
+  conj_tac >- (
+    fsrw_tac [DNF_ss][] >>
+    qmatch_abbrev_tac `A ∨ B ∨ C` >>
+    Cases_on `A = T` >> srw_tac [][] >>
+    Cases_on `B = T` >> srw_tac [][] >>
+    DISJ2_TAC >> DISJ2_TAC >>
+    unabbrev_all_tac >>
+    conj_tac >- (
+      qx_gen_tac `nn` >>
+      fsrw_tac [][] >>
+      first_x_assum (qspecl_then [`nn`,`FST (EL nn t)`,`SND (EL nn t)`] mp_tac) >>
+      srw_tac [][] >> srw_tac [][] ) >>
+    map_every qx_gen_tac [`ss`,`mm`] >>
+    fsrw_tac [][] >>
+    first_x_assum (qspecl_then [`ss`,`mm`] mp_tac) >>
+    srw_tac [][] >> srw_tac [][] ) >>
+  SELECT_ELIM_TAC >>
+  conj_tac >- PROVE_TAC [] >>
+  fsrw_tac [DNF_ss,ARITH_ss][] >>
+  conj_tac >- (
+    srw_tac [][] >>
+    qmatch_rename_tac `LENGTH t + 2 < n2 + (LENGTH t + 2) - n1` [] >>
+    `n = n1` by (
+      spose_not_then strip_assume_tac >>
+      Cases_on `n < n1` >- PROVE_TAC [] >>
+      Cases_on `n1 < n` >- PROVE_TAC [] >>
+      DECIDE_TAC ) >>
+    `~(n2 ≤ n)` by metis_tac [FST,SND,PAIR_EQ] >>
+    DECIDE_TAC ) >>
+  conj_tac >- PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+  PROVE_TAC [FST] ) >>
+SELECT_ELIM_TAC >>
+conj_tac >- (
+  fsrw_tac [DNF_ss][] >>
+  DISJ2_TAC >> DISJ2_TAC >>
+  conj_tac >- (
+    srw_tac [][] >>
+    `CHOICE s ∈ s` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] >>
+    Cases_on `EL n t` >> srw_tac [][] >>
+    PROVE_TAC [CHOICE_NOT_IN_REST,FST,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] ) >>
+  metis_tac [CHOICE_NOT_IN_REST,FST,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] ) >>
+SELECT_ELIM_TAC >>
+conj_tac >- PROVE_TAC [] >>
+fsrw_tac [DNF_ss,ARITH_ss][] >>
+conj_tac >- PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+conj_tac >- (
+  conj_tac >- (
+    srw_tac [][] >>
+    PROVE_TAC [REST_SUBSET,SUBSET_DEF,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+  srw_tac [][] >>
+  metis_tac [CHOICE_NOT_IN_REST,REST_SUBSET,SUBSET_DEF,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+PROVE_TAC []);
 
 val _ = export_theory ()
