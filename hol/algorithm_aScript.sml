@@ -52,14 +52,6 @@ val term_red_FINITE = Q.store_thm(
 `∀eq. term_red eqs1 eq eqs2 ∧ FINITE eqs1 ⇒ FINITE eqs2`,
 srw_tac [][term_red_cases] >> srw_tac [][]);
 
-val occurs_not_unify = Q.store_thm(
-"occurs_not_unify",
-`x ∈ vars t ∧ t ≠ Var x ⇒ SAPPLY s (Var x) ≠ SAPPLY s t`,
-srw_tac [][vars_subterm,RTC_CASES_TC] >>
-imp_res_tac psubterm_mono_SAPPLY >>
-full_simp_tac (srw_ss()) [] >>
-metis_tac [psubterm_irrefl]);
-
 val no_cycles = Q.store_thm( (* half of Theorem 2.2 *)
 "no_cycles",
 `(Var x, t) ∈ eqs ∧ x ∈ vars t ∧ t ≠ Var x ⇒ (set_unifier eqs = {})`,

@@ -95,4 +95,12 @@ qmatch_assum_abbrev_tac `subterm_at u2 ns t2` >>
 qexists_tac `t2` >> srw_tac [][Abbr`t2`] >>
 fsrw_tac [][LIST_EQ_REWRITE,rich_listTheory.EL_MAP]);
 
-val _ = export_theory ();
+val occurs_not_unify = Q.store_thm(
+"occurs_not_unify",
+`x ∈ vars t ∧ t ≠ Var x ⇒ SAPPLY s (Var x) ≠ SAPPLY s t`,
+srw_tac [][vars_subterm,RTC_CASES_TC] >>
+imp_res_tac psubterm_mono_SAPPLY >>
+full_simp_tac (srw_ss()) [] >>
+metis_tac [psubterm_irrefl]);
+
+val _ = export_theory ()
