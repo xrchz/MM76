@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib boolSimps SatisfySimps Parse pairTheory stringTheory termTheory substitutionTheory multiequationTheory multiequation_systemTheory pred_setTheory listTheory relationTheory bagTheory finite_mapTheory lcsymtacs
+open HolKernel boolLib bossLib boolSimps SatisfySimps Parse pairTheory stringTheory termTheory substitutionTheory multiequationTheory multiequation_systemTheory pred_setTheory listTheory relationTheory bagTheory finite_mapTheory collapseTheory walkTheory walkstarTheory lcsymtacs
 
 val _ = new_theory "algorithm_b"
 
@@ -466,6 +466,121 @@ qsuff_tac `wfsystem sys2` >- (
   fsrw_tac [][IN_DISJOINT] >>
   metis_tac [wfsystem_wfm_pair,FST,meq_occurs_not_unify,EXTENSION,NOT_IN_EMPTY] ) >>
 PROVE_TAC [wfsystem_algb]);
+
+val algb_sound = save_thm(
+"algb_sound",
+RTC_lifts_equalities
+|> Q.GEN `f` |> Q.ISPEC `meqs_unifier o meqs_of`
+|> Q.GEN `R` |> Q.ISPEC `algb1`
+|> SIMP_RULE std_ss []
+|> UNDISCH
+|> PROVE_HYP (algb1_sound |> Q.GEN `sys2` |> Q.GEN `sys1`)
+|> Q.SPEC `sys1` |> Q.SPEC `sys2`);
+
+val algb_success_empty_unsolved_bags = Q.store_thm(
+"algb_success_empty_unsolved_bags",
+`wfsystem sys ∧ (!sys'. ¬algb1 sys sys') ∧  ¬algb_fail sys ∧ meq ∈ SND sys ⇒ (SND meq = {||})`,
+Cases_on `sys` >> Cases_on `meq` >>
+srw_tac [][algb_fail_def,algb1_cases,meq_red_cases,algb1_cases] >>
+PROVE_TAC []);
+
+val wfsystem_singleton_solved_bags = Q.store_thm(
+"wfsystem_singleton_solved_bags",
+`wfsystem sys ∧ MEM meq (FST sys) ⇒ ∃tm. SND meq = {|tm|}`,
+Cases_on `sys` >> Cases_on `meq` >>
+srw_tac [][wfsystem_def,RES_FORALL_THM,meqs_of_def] >>
+res_tac >>
+imp_res_tac wfm_FINITE_BAG >>
+fsrw_tac [][] >>
+full_simp_tac pure_ss [arithmeticTheory.ONE] >>
+fsrw_tac [][BCARD_SUC] >>
+srw_tac [][] >>
+fsrw_tac [][BCARD_0]);
+
+val var_in_terms_of_wfm = Q.store_thm(
+"var_in_terms_of_wfm",
+`wfm meq ⇒ (Var v ∈ terms_of meq ⇔ v ∈ FST meq)`,
+Cases_on `meq` >> srw_tac [][wfm_def,BAG_EVERY,terms_of_def] >>
+PROVE_TAC []);
+
+val algb_unifier = Q.store_thm(
+"algb_unifier",
+`algb_stop sys1 sys2 ∧ ¬algb_fail sys2 ⇒ collapse (system_subst sys2) ∈ meqs_unifier (meqs_of sys1)`,
+srw_tac [][algb_stop_def] >>
+`wfsystem sys2` by PROVE_TAC [wfsystem_algb] >>
+`wfs (system_subst sys2)` by PROVE_TAC [wfsystem_wfs] >>
+imp_res_tac algb_sound >>
+srw_tac [][] >>
+pop_assum (K ALL_TAC) >>
+qpat_assum `wfsystem sys1` (K ALL_TAC) >>
+qpat_assum `algb1^* sys1 sys2` (K ALL_TAC) >>
+srw_tac [][meqs_unifier_def,meq_unifier_def] >>
+srw_tac [][GSPECIFICATION,collapse_APPLY_eq_walkstar] >>
+`FINITE (left_vars (set (FST sys2)) ∪ left_vars (IMAGE (\(s,m). (REST s,m)) (SND sys2)))` by (
+  srw_tac [][EXISTS_PROD,left_vars_def] >>
+  PROVE_TAC [wfsystem_wfm,FST,wfm_FINITE,FINITE_REST] ) >>
+fsrw_tac [][meqs_of_def] >- (
+  qmatch_assum_rename_tac `MEM meq (FST sys2)` [] >>
+  `∃tm. SND meq = {|tm|}` by PROVE_TAC [wfsystem_singleton_solved_bags] >>
+  qmatch_abbrev_tac `walk* s t1 = walk* s t2` >>
+  `!v. v ∈ FST meq ⇒ (walk* s (Var v) = walk* s tm)` by (
+    rpt strip_tac >>
+    qsuff_tac `FLOOKUP s v = SOME tm` >- srw_tac [][Once vwalk_def,Once apply_ts_thm] >>
+    srw_tac [][Abbr`s`,system_subst_def,FLOOKUP_FUN_FMAP] >- (
+      srw_tac [DNF_ss,SATISFY_ss][left_vars_def] ) >>
+    SELECT_ELIM_TAC >>
+    conj_tac >- (Cases_on `meq` >> fsrw_tac [][] >> PROVE_TAC [BAG_IN_BAG_INSERT]) >>
+    srw_tac [][] >>
+    Cases_on `sys2` >>
+    fsrw_tac [][wfsystem_def] >>
+    fsrw_tac [][FORALL_PROD] >>
+    fsrw_tac [][IN_DISJOINT] >>
+    fsrw_tac [DNF_ss][] >- (
+      fsrw_tac [][MEM_EL] >>
+      qmatch_assum_rename_tac `(s,m) = EL n2 ls` [] >>
+      qmatch_assum_rename_tac `meq = EL n1 ls` [] >>
+      `¬(n1 < n2)` by PROVE_TAC [FST,pair_CASES] >>
+      `¬(n2 < n1)` by PROVE_TAC [FST,pair_CASES] >>
+      `n1 = n2` by DECIDE_TAC >>
+      fsrw_tac [][] >>
+      srw_tac [][] >>
+      qpat_assum `(s,m) = EL n1 ls` (assume_tac o SYM) >>
+      fsrw_tac [][] >>
+      srw_tac [][] >>
+      fsrw_tac [][] ) >>
+    PROVE_TAC [REST_SUBSET,SUBSET_DEF,FST,pair_CASES] ) >>
+  qpat_assum `wfs s` assume_tac >>
+  fsrw_tac [][terms_of_def] ) >>
+qmatch_assum_rename_tac `meq ∈ SND sys2` [] >>
+`SND meq = {||}` by PROVE_TAC [algb_success_empty_unsolved_bags] >>
+qmatch_abbrev_tac `walk* s t1 = walk* s t2` >>
+`!v. v ∈ FST meq ⇒ (walk* s (Var v) = walk* s (Var (CHOICE (FST meq))))` by (
+  rpt strip_tac >>
+  qsuff_tac `(v = CHOICE (FST meq)) ∨ (FLOOKUP s v = SOME (Var (CHOICE (FST meq))))` >- (
+    srw_tac [][] >>
+    srw_tac [][Once vwalk_def] ) >>
+  Cases_on `v = CHOICE (FST meq)` >>
+  srw_tac [][Abbr`s`,system_subst_def,FLOOKUP_FUN_FMAP] >- (
+    srw_tac [DNF_ss][left_vars_def] >>
+    DISJ2_TAC >>
+    qexists_tac `meq` >>
+    Cases_on `meq` >> srw_tac [][] >>
+    fsrw_tac [][] >>
+    PROVE_TAC [CHOICE_INSERT_REST,IN_INSERT,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+  SELECT_ELIM_TAC >>
+  conj_tac >- metis_tac [pair_CASES,FST,CHOICE_INSERT_REST,IN_INSERT,pred_setTheory.MEMBER_NOT_EMPTY] >>
+  srw_tac [][] >>
+  Cases_on `sys2` >>
+  fsrw_tac [][wfsystem_def] >>
+  fsrw_tac [][FORALL_PROD] >>
+  fsrw_tac [][IN_DISJOINT] >>
+  fsrw_tac [DNF_ss][] >- (
+    Cases_on `meq` >> fsrw_tac [][] >>
+    PROVE_TAC [] ) >>
+  Cases_on `meq` >>
+  fsrw_tac [][] >>
+  PROVE_TAC [REST_SUBSET,SUBSET_DEF] ) >>
+fsrw_tac [][terms_of_def]);
 
 (*
 val algb1_example0 = Q.store_thm(
