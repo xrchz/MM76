@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib boolSimps SatisfySimps Parse multiequationTheory pred_setTheory listTheory triangular_substitutionTheory bagTheory finite_mapTheory pairTheory relationTheory lcsymtacs
+open HolKernel boolLib bossLib boolSimps SatisfySimps Parse multiequationTheory pred_setTheory listTheory termTheory substitutionTheory triangular_substitutionTheory bagTheory finite_mapTheory pairTheory relationTheory lcsymtacs
 
 val _ = new_theory "multiequation_system"
 
@@ -178,5 +178,39 @@ conj_tac >- (
   srw_tac [][] >>
   metis_tac [CHOICE_NOT_IN_REST,REST_SUBSET,SUBSET_DEF,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
 PROVE_TAC []);
+
+val meqR_def = Define`
+  meqR meqs meq1 meq2 = meq1 ∈ meqs ∧ meq2 ∈ meqs ∧ ∃v tm. v ∈ FST meq1 ∧ tm <: SND meq2 ∧ v ∈ vars tm`;
+
+val WF_meqR = Q.store_thm( (* Strengthened form of Theorem 3.3 *)
+"WF_meqR",
+`RES_FORALL meqs wfm ∧ meqs_unifier meqs ≠ {} ⇒ WF (meqR meqs)`,
+srw_tac [DNF_ss][FORALL_PROD,GSYM pred_setTheory.MEMBER_NOT_EMPTY,
+                 RES_FORALL_THM,wfm_def,BAG_EVERY,
+                 meqs_unifier_def,meq_unifier_def] >>
+fsrw_tac [][terms_of_def] >>
+match_mp_tac WF_SUBSET >>
+WF_REL_TAC `inv_image (measure (term_size ARB ARB)) (λ(s,m). SAPPLY x (Var (CHOICE s)))` >>
+REWRITE_TAC [meqR_def] >>
+rpt strip_tac >>
+qmatch_assum_rename_tac `tm <: m2` [] >>
+qmatch_assum_rename_tac `(s2,m2) ∈ meqs` [] >>
+qmatch_rename_tac `term_size ARB ARB (SAPPLY s (Var (CHOICE s1))) < X` ["X"] >>
+`∃f ts. tm = App f ts` by PROVE_TAC [term_nchotomy] >>
+`psubterm (Var v) tm` by PROVE_TAC [vars_subterm,RTC_CASES_TC] >>
+`SAPPLY s (Var (CHOICE s1)) = SAPPLY s (Var v)` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
+`SAPPLY s (Var (CHOICE s2)) = SAPPLY s tm` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
+PROVE_TAC [psubterm_mono_SAPPLY,psubterm_term_size,prim_recTheory.measure_thm]);
+
+val transitive_WF_imp_StrongOrder = Q.store_thm( (* this can take you closer to Theorem 3.3 as in the text *)
+"transitive_WF_imp_StrongOrder",
+`transitive R ∧ WF R ⇒ StrongOrder R`,
+srw_tac [][StrongOrder] >-
+  PROVE_TAC [irreflexive_def,WF_NOT_REFL] >>
+srw_tac [][antisymmetric_def] >>
+fsrw_tac [][prim_recTheory.WF_IFF_WELLFOUNDED,prim_recTheory.wellfounded_def] >>
+first_x_assum (qspec_then `\n. if EVEN n then x else y` mp_tac) >>
+srw_tac [][] >>
+Cases_on `EVEN n` >> fsrw_tac [][arithmeticTheory.EVEN] );
 
 val _ = export_theory ()
