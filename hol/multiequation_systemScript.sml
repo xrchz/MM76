@@ -213,4 +213,24 @@ first_x_assum (qspec_then `\n. if EVEN n then x else y` mp_tac) >>
 srw_tac [][] >>
 Cases_on `EVEN n` >> fsrw_tac [][arithmeticTheory.EVEN] );
 
+val top_meq_exists = Q.store_thm( (* Corollary to Theorem 3.3 *)
+"top_meq_exists",
+`RES_FORALL meqs wfm ∧ pairwise (RC (inv_image DISJOINT FST)) meqs ∧
+ meqs_unifier meqs ≠ {} ∧ meqs ≠ {} ⇒
+ ∃meq. meq ∈ meqs ∧
+       ∀meq'. meq' ∈ meqs ∧ meq' ≠ meq ⇒
+              DISJOINT (FST meq) (FST meq') ∧
+              DISJOINT (FST meq) (BIGUNION (IMAGE vars (SET_OF_BAG (SND meq))))`,
+strip_tac >> imp_res_tac WF_meqR >>
+fsrw_tac [DNF_ss][RES_FORALL_THM,pairwise_def,RC_DEF,inv_image_def,IN_DISJOINT,FORALL_PROD] >>
+fsrw_tac [][WF_DEF] >>
+first_x_assum (qspec_then `\meq. meq ∈ meqs` mp_tac) >>
+fsrw_tac [DNF_ss,SATISFY_ss][GSYM pred_setTheory.MEMBER_NOT_EMPTY] >>
+srw_tac [][] >>
+qexists_tac `min` >>
+fsrw_tac [][meqR_def] >>
+Cases_on `min` >>
+srw_tac [][] >> fsrw_tac [][] >>
+PROVE_TAC [FST]);
+
 val _ = export_theory ()
