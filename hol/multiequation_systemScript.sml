@@ -238,62 +238,31 @@ qmatch_rename_tac `term_size ARB ARB (SAPPLY s (Var (CHOICE s1))) < X` ["X"] >>
 `SAPPLY s (Var (CHOICE s2)) = SAPPLY s tm` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
 PROVE_TAC [psubterm_mono_SAPPLY,psubterm_term_size,prim_recTheory.measure_thm]);
 
-val bounded_Order_has_greatest = Q.store_thm(
-"bounded_Order_has_greatest",
-`∀s. FINITE s ⇒ ∀R. Order R ∧ (!x y. R x y ⇒ x ∈ s ∧ y ∈ s) ∧ s ≠ {} ⇒ ∃e. e ∈ s ∧ ∀x. x ∈ s ∧ x ≠ e ⇒ ¬ R e x`,
-ho_match_mp_tac FINITE_INDUCT >>
-srw_tac [DNF_ss][] >>
-Cases_on `s = {}` >> srw_tac [][] >>
-Cases_on `!x. x ∈ s ∧ x ≠ e ⇒ ¬ R e x` >> srw_tac [][] >>
-fsrw_tac [][] >>
-Q.ABBREV_TAC `RR = R RINTER (\x y. x ≠ e ∧ y ≠ e)` >>
-`Order RR` by (
-  fsrw_tac [][Abbr`RR`,Order,antisymmetric_RINTER] >>
-  match_mp_tac transitive_RINTER >>
-  srw_tac [][] >>
-  srw_tac [][transitive_def]) >>
-`∀x y. RR x y ⇒ x ∈ s ∧ y ∈ s` by (
-  srw_tac [][Abbr`RR`,FORALL_PROD,RINTER] >>
-  PROVE_TAC [] ) >>
-fsrw_tac [DNF_ss][] >>
-first_x_assum (qspec_then `RR` mp_tac) >>
-srw_tac [SATISFY_ss][] >>
-qmatch_assum_rename_tac `!x. x ∈ s ∧ x ≠ xold ⇒ ¬RR xold x` [] >>
-Cases_on `x = xold` >- (
-  qexists_tac `x` >> srw_tac [][] >- (
-    PROVE_TAC [Order,antisymmetric_def] ) >>
-  fsrw_tac [][Abbr`RR`,RINTER] >>
-  PROVE_TAC [Order,antisymmetric_def] ) >>
-Cases_on `R xold x` >- (
-  qexists_tac `x` >> srw_tac [][] >- (
-    PROVE_TAC [Order,antisymmetric_def]) >>
-  fsrw_tac [][Abbr`RR`,RINTER] >>
-  PROVE_TAC [Order,antisymmetric_def] ) >>
-qexists_tac `xold` >> srw_tac [][] >- (
-  spose_not_then strip_assume_tac >>
-  PROVE_TAC [transitive_def,Order] ) >>
-fsrw_tac [][Abbr`RR`,RINTER] >>
-PROVE_TAC []);
-
 val top_meq_exists = Q.store_thm( (* Corollary to Theorem 3.3 *)
 "top_meq_exists",
 `FINITE meqs ∧ RES_FORALL meqs wfm ∧ pairwise (RC (inv_image DISJOINT FST)) meqs ∧
  meqs_unifier meqs ≠ {} ∧ meqs ≠ {} ⇒
  ∃meq. meq ∈ meqs ∧
-       ∀meq'. meq' ∈ meqs ∧ meq' ≠ meq ⇒
-              DISJOINT (FST meq) (FST meq') ∧
+       ∀meq'. meq' ∈ meqs ⇒
+              (meq' ≠ meq ⇒ DISJOINT (FST meq) (FST meq')) ∧
               DISJOINT (FST meq) (bag_vars (SND meq'))`,
 strip_tac >> imp_res_tac WF_meqR >>
-`Order (meqR meqs)^+` by PROVE_TAC [Order,TC_TRANSITIVE,WF_TC,WF_antisymmetric] >>
+`StrongOrder (inv (meqR meqs)^+)` by
+  PROVE_TAC [StrongOrder,WF_irreflexive,TC_TRANSITIVE,WF_TC,WF_antisymmetric,
+             irreflexive_inv, antisymmetric_inv, transitive_inv, inv_TC] >>
 `!x y. (meqR meqs)^+ x y ⇒ x ∈ meqs ∧ y ∈ meqs` by (
   ho_match_mp_tac TC_lifts_transitive_relations >>
   srw_tac [][meqR_def,transitive_def] ) >>
-`?max. max ∈ meqs ∧ ∀meq. meq ∈ meqs ∧ meq ≠ max ⇒ ¬ (meqR meqs)^+ max meq` by (
-  match_mp_tac (MP_CANON bounded_Order_has_greatest) >>
-  srw_tac [SATISFY_ss][] ) >>
-`!meq. meq ∈ meqs ∧ meq ≠ max ⇒ ¬ meqR meqs max meq` by PROVE_TAC [TC_SUBSET] >>
-qexists_tac `max` >>
-Cases_on `max` >>
+`(inv (meqR meqs)^+) = REL_RESTRICT (inv (meqR meqs)^+) meqs` by (
+  srw_tac [SATISFY_ss][FUN_EQ_THM,REL_RESTRICT_DEF,EQ_IMP_THM,inv_DEF] ) >>
+`WF (inv (meqR meqs)^+)` by PROVE_TAC [FINITE_StrongOrder_WF] >>
+fsrw_tac [][WF_DEF] >>
+pop_assum (qspec_then `\meq. meq ∈ meqs` mp_tac) >>
+fsrw_tac [SATISFY_ss][GSYM pred_setTheory.MEMBER_NOT_EMPTY,inv_DEF] >>
+strip_tac >>
+qexists_tac `min` >>
+`!meq. meq ∈ meqs ⇒ ¬ meqR meqs min meq` by PROVE_TAC [TC_SUBSET] >>
+Cases_on `min` >>
 fsrw_tac [][IN_DISJOINT,pairwise_def,RC_DEF,inv_image_def,FORALL_PROD,bag_vars_def,meqR_def] >>
 PROVE_TAC []);
 
