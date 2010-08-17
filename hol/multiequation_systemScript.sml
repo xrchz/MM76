@@ -202,13 +202,6 @@ qmatch_rename_tac `term_size ARB ARB (SAPPLY s (Var (CHOICE s1))) < X` ["X"] >>
 `SAPPLY s (Var (CHOICE s2)) = SAPPLY s tm` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
 PROVE_TAC [psubterm_mono_SAPPLY,psubterm_term_size,prim_recTheory.measure_thm]);
 
-
-
-val transitive_WF_imp_StrongOrder = Q.store_thm( (* this can take you closer to Theorem 3.3 as in the text *)
-"transitive_WF_imp_StrongOrder",
-`transitive R ∧ WF R ⇒ StrongOrder R`,
-metis_tac [WF_antisymmetric, StrongOrderDef, WF_irreflexive])
-
 val bounded_Order_has_greatest = Q.store_thm(
 "bounded_Order_has_greatest",
 `∀s. FINITE s ⇒ ∀R. Order R ∧ (!x y. R x y ⇒ x ∈ s ∧ y ∈ s) ∧ s ≠ {} ⇒ ∃e. e ∈ s ∧ ∀x. x ∈ s ∧ x ≠ e ⇒ ¬ R e x`,
@@ -255,7 +248,7 @@ val top_meq_exists = Q.store_thm( (* Corollary to Theorem 3.3 *)
               DISJOINT (FST meq) (FST meq') ∧
               DISJOINT (FST meq) (bag_vars (SND meq'))`,
 strip_tac >> imp_res_tac WF_meqR >>
-`Order (meqR meqs)^+` by PROVE_TAC [transitive_WF_imp_StrongOrder,WF_TC,TC_TRANSITIVE,Order,StrongOrder] >>
+`Order (meqR meqs)^+` by PROVE_TAC [Order,TC_TRANSITIVE,WF_TC,WF_antisymmetric] >>
 `!x y. (meqR meqs)^+ x y ⇒ x ∈ meqs ∧ y ∈ meqs` by (
   ho_match_mp_tac TC_lifts_transitive_relations >>
   srw_tac [][meqR_def,transitive_def] ) >>
