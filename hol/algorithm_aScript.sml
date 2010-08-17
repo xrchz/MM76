@@ -2,19 +2,6 @@ open HolKernel boolLib bossLib SatisfySimps Parse termTheory substitutionTheory 
 
 val _ = new_theory "algorithm_a";
 
-val SUM_IMAGE_LIST_TO_SET = Q.store_thm(
-"SUM_IMAGE_LIST_TO_SET",
-`SIGMA f (set ls) <= SUM (MAP f ls)`,
-Q.ID_SPEC_TAC `ls` >> Induct >>
-srw_tac [][SUM_IMAGE_THM,SUM_IMAGE_DELETE] >>
-DECIDE_TAC);
-
-val SUM_MAP_ZIP = Q.store_thm(
-"SUM_MAP_ZIP",
-`(LENGTH ls1 = LENGTH ls2) /\ (!x y. f (x,y) = g x + h y) ==>(SUM (MAP f (ZIP (ls1,ls2))) = SUM (MAP g ls1) + SUM (MAP h ls2))`,
-MAP_EVERY Q.ID_SPEC_TAC [`ls2`,`ls1`] >>
-Induct >> Cases_on `ls2` >> srw_tac [ARITH_ss][]);
-
 val (term_red_rules,term_red_ind,term_red_cases) = Hol_reln`
   (LENGTH xs = LENGTH ys) ∧ (App f xs, App f ys) ∈ eqs
   ⇒ term_red eqs (App f xs, App f ys) (eqs DELETE (App f xs, App f ys) ∪ (set (ZIP (xs,ys))))`;
@@ -233,11 +220,11 @@ Q.MATCH_ABBREV_TAC `n1b < n1a ∨ ((n1b = n1a) ∧ (n2b < n2a ∨ ((n2b = n2a) �
       full_simp_tac (srw_ss()++ARITH_ss) [] >>
       match_mp_tac LESS_EQ_LESS_TRANS >>
       qexists_tac `SUM (MAP fsym_counteq (ZIP (xs,ys)))` >>
-      srw_tac [ARITH_ss][SUM_IMAGE_LIST_TO_SET] >>
+      srw_tac [ARITH_ss][SUM_IMAGE_LIST_TO_SET_upper_bound] >>
       Q.MATCH_ABBREV_TAC `A < B + (C + 2)` >>
       `A = B + C` by (
         UNABBREV_ALL_TAC >>
-        match_mp_tac SUM_MAP_ZIP >>
+        match_mp_tac SUM_MAP_PLUS_ZIP >>
         srw_tac [][] ) >>
       DECIDE_TAC ) >>
     srw_tac [ARITH_ss][SUM_IMAGE_UNION] ) >>
