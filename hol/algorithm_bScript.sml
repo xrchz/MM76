@@ -132,7 +132,7 @@ reverse conj_tac >- (
     PROVE_TAC [wfsystem_unsolved_vars_SUBSET_left_vars,SUBSET_DEF,IN_UNION] >>
   `FINITE_BAG m` by PROVE_TAC [SND,wfm_FINITE_BAG] >>
   imp_res_tac frontier_left_vars_occur >>
-  fsrw_tac [DNF_ss][left_vars_def,right_vars_def,SUBSET_DEF,Abbr`s1`] >>
+  fsrw_tac [DNF_ss][bag_vars_def,left_vars_def,right_vars_def,SUBSET_DEF,Abbr`s1`] >>
   PROVE_TAC [FST,SND]) >>
 `FINITE s` by PROVE_TAC [wfm_def] >>
 simp_tac (std_ss) [left_vars_def] >>
@@ -353,8 +353,8 @@ srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
     simp_tac (srw_ss()) [pairwise_def,RC_DEF,inv_image_def] >>
     metis_tac [FST] ) >>
   fsrw_tac [][rich_listTheory.IS_EL_SNOC] >>
-  qsuff_tac `FST meq ⊆ left_vars u1 ∪ BIGUNION (IMAGE vars (SET_OF_BAG m))` >- (
-    fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,left_vars_def,MEM_EL] >>
+  qsuff_tac `FST meq ⊆ left_vars u1 ∪ bag_vars m` >- (
+    fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,bag_vars_def,left_vars_def,MEM_EL] >>
     qx_gen_tac `x` >>
     reverse (Cases_on `x ∈ FST meq`) >- srw_tac [][] >>
     disch_then (qspec_then `x` mp_tac) >>
@@ -370,7 +370,7 @@ srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
     match_mp_tac SUBSET_BIGUNION_I >>
     PROVE_TAC [IN_IMAGE] ) >>
   `left_vars u2 = left_vars u1 ∪ left_vars f` by PROVE_TAC [meq_red_left_vars] >>
-  `left_vars f ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))` by (
+  `left_vars f ⊆ bag_vars m` by (
     fsrw_tac [][meq_red_cases] >>
     PROVE_TAC [frontier_vars,SND,SUBSET_UNION,SUBSET_TRANS] ) >>
   asm_simp_tac (srw_ss()) [] >>
@@ -397,7 +397,7 @@ srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
   `v ∈ left_vars f` by PROVE_TAC [] >>
   imp_res_tac frontier_left_vars_occur >>
   qpat_assum `FINITE_BAG m` assume_tac >>
-  fsrw_tac [DNF_ss][SUBSET_DEF] >>
+  fsrw_tac [DNF_ss][SUBSET_DEF,bag_vars_def] >>
   PROVE_TAC [SND])
 >- (
   `RES_FORALL (compactify u2) wfm` by (
@@ -432,8 +432,8 @@ srw_tac [][wfsystem_def,RES_FORALL_THM] >- (
     srw_tac [SATISFY_ss,DNF_ss][right_vars_def,SUBSET_DEF] ) >>
   fsrw_tac [][meq_red_cases] >>
   `vars c ⊆ left_vars f` by PROVE_TAC [FST,SND,vars_common_part_SUBSET_left_vars_frontier] >>
-  `left_vars f ⊆ BIGUNION (IMAGE vars (SET_OF_BAG m))` by PROVE_TAC [SND,frontier_left_vars_occur] >>
-  fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,right_vars_def] >>
+  `left_vars f ⊆ bag_vars m` by PROVE_TAC [SND,frontier_left_vars_occur] >>
+  fsrw_tac [DNF_ss][SUBSET_DEF,IN_DISJOINT,right_vars_def,bag_vars_def] >>
   metis_tac [SND] )
 );
 
