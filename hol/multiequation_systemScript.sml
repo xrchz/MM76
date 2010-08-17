@@ -12,11 +12,6 @@ val meqs_of_pair_rewrite = Q.store_thm(
 `meqs_of (t,u) = set t ∪ u`,
 srw_tac [][meqs_of_def]);
 
-(* We differ from the text by requiring the bags in the t part to
-   have cardinality = 1 rather than ≤ 1.
-   The only time they would have cardinality 0 is when the
-   remaining equations from the u part are transferred to the t part,
-   and we don't explicitly perform that step. *)
 val wfsystem_def = Define`
   wfsystem (t,u) =
     FINITE u ∧
@@ -27,7 +22,7 @@ val wfsystem_def = Define`
        (meq1 ∈ u ∧ meq2 ∈ u ∧ meq1 ≠ meq2) ∨
        (MEM meq1 t ∧ meq2 ∈ u)) ⇒
       DISJOINT (FST meq1) (FST meq2)) ∧
-    (∀meq. MEM meq t ⇒ (BAG_CARD (SND meq) = 1)) ∧
+    (∀meq. MEM meq t ⇒ (BAG_CARD (SND meq) ≤ 1)) ∧
     (∀i tm. i < LENGTH t ∧
             ((∃j. tm <: (SND (EL j t)) ∧ i ≤ j ∧ j < LENGTH t) ∨
              tm ∈ BIGUNION (IMAGE (SET_OF_BAG o SND) u))
@@ -72,31 +67,30 @@ srw_tac [][meqs_of_def,MEM_EL] >- (
   metis_tac [] ) >>
 srw_tac [SATISFY_ss][]);
 
-val system_subst_def = Define
-`system_subst sys =
+val solved_part_subst_def = Define
+`solved_part_subst t =
  FUN_FMAP
- (λx. @tm. ∃s m.((MEM (s,m) (FST sys) ∧ x ∈ s ∧ tm <: m) ∨
-                 (s,m) ∈ (SND sys) ∧ x ∈ REST s ∧ (tm = Var (CHOICE s))))
- (left_vars (set (FST sys)) ∪
-  left_vars (IMAGE (λ(s,m). (REST s, m)) (SND sys)))`;
+ (λx. @tm. ∃s m. MEM (s,m) t ∧ x ∈ s ∧
+                 ((tm <: m) ∨
+                  ((m = {||}) ∧ x ∈ REST s ∧ (tm = Var (CHOICE s)))))
+ (BIGUNION (IMAGE (λ(s,m). if m = {||} then REST s else s) (set t)))`;
 
 val wfsystem_wfs = Q.store_thm(
 "wfsystem_wfs",
-`wfsystem sys ⇒ wfs (system_subst sys)`,
+`wfsystem sys ⇒ wfs (solved_part_subst (FST sys))`,
 srw_tac [][wfs_def] >>
 `?t u. sys = (t,u)` by (Cases_on `sys` >> srw_tac [][]) >>
 srw_tac [][] >>
 match_mp_tac WF_SUBSET >>
-WF_REL_TAC `measure (λv. @i. (∃n s m. (n < LENGTH t) ∧ (EL n t = (s,m)) ∧ v ∈ s ∧ (i = 2 + LENGTH t - n)) ∨
-                             (∃s m. (s,m) ∈ u ∧ v ∈ (REST s) ∧ (i = 1)) ∨
-                             ((∀n. n < LENGTH t ⇒ v ∉ (FST (EL n t))) ∧
-                              (∀s m. (s,m) ∈ u ⇒ v ∉ (REST s)) ∧
+WF_REL_TAC `measure (λv. @i. (∃n s m. (n < LENGTH t) ∧ (EL n t = (s,m)) ∧ (m ≠ {||}) ∧ v ∈ s ∧ (i = 2 + LENGTH t - n)) ∨
+                             (∃s. MEM (s,{||}) t ∧ v ∈ (REST s) ∧ (i = 1)) ∨
+                             ((∀n s m. n < LENGTH t ∧ (EL n t = (s,m)) ∧ m ≠ {||} ⇒ v ∉ s) ∧
+                              (∀s. MEM (s,{||}) t ⇒ v ∉ (REST s)) ∧
                               (i = 0)))` >>
-`FINITE (left_vars (set t) ∪
-         left_vars (IMAGE (λ(s,m). (REST s, m)) u))` by (
-  srw_tac [][left_vars_def,EXISTS_PROD] >>
-  PROVE_TAC [FINITE_REST,wfsystem_FINITE_pair,IMAGE_FINITE,wfsystem_wfm_pair,FST,wfm_FINITE] ) >>
-fsrw_tac [DNF_ss][vR_def,system_subst_def,FLOOKUP_FUN_FMAP,left_vars_def] >>
+`FINITE (BIGUNION (IMAGE (\(s,m). if m = {||} then REST s else s) (set t)))` by (
+  srw_tac [][EXISTS_PROD] >> srw_tac [][] >>
+  PROVE_TAC [wfsystem_wfm_pair,FST,wfm_FINITE,FINITE_REST] ) >>
+fsrw_tac [DNF_ss][vR_def,solved_part_subst_def,FLOOKUP_FUN_FMAP,left_vars_def] >>
 map_every qx_gen_tac [`v2`,`v1`] >>
 qmatch_abbrev_tac `(case if X then SOME Y else NONE of NONE -> F || SOME tm -> v2 ∈ vars tm) ⇒ A` >>
 reverse (Cases_on `X = T`) >- srw_tac [][] >>
@@ -106,12 +100,17 @@ Q.UNABBREV_TAC `Y` >>
 SELECT_ELIM_TAC >>
 conj_tac >- (
   unabbrev_all_tac >>
-  reverse (fsrw_tac [][EXISTS_PROD]) >>
-  fsrw_tac [][wfsystem_def] >- PROVE_TAC [] >>
+  fsrw_tac [][wfsystem_def,EXISTS_PROD] >>
   qmatch_assum_rename_tac `MEM (vs,ms) t` [] >>
-  `BAG_CARD ms = 1` by PROVE_TAC [SND] >>
+  `BAG_CARD ms ≤ 1` by PROVE_TAC [SND] >>
   fsrw_tac [][meqs_of_def,RES_FORALL_THM] >>
   `FINITE_BAG ms` by PROVE_TAC [wfm_FINITE_BAG,SND] >>
+  Cases_on `BAG_CARD ms = 0` >- (
+    qpat_assum `FINITE_BAG ms` assume_tac >>
+    fsrw_tac [][BCARD_0] >>
+    PROVE_TAC [REST_SUBSET,SUBSET_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+  `BAG_CARD ms = 1` by DECIDE_TAC >>
+  qpat_assum `FINITE_BAG ms` assume_tac >>
   full_simp_tac pure_ss [arithmeticTheory.ONE] >>
   fsrw_tac [][BCARD_SUC] >> srw_tac [][] >>
   fsrw_tac [][BCARD_0] >> srw_tac [][] >>
@@ -137,13 +136,13 @@ fsrw_tac [][MEM_EL,IN_DISJOINT] >- (
       qx_gen_tac `nn` >>
       fsrw_tac [][] >>
       first_x_assum (qspecl_then [`nn`,`FST (EL nn t)`,`SND (EL nn t)`] mp_tac) >>
-      srw_tac [][] >> srw_tac [][] ) >>
-    map_every qx_gen_tac [`ss`,`mm`] >>
+      srw_tac [][] >> fsrw_tac [][] ) >>
+    map_every qx_gen_tac [`ss`,`nn`] >>
     fsrw_tac [][] >>
-    first_x_assum (qspecl_then [`ss`,`mm`] mp_tac) >>
+    first_x_assum (qspecl_then [`ss`,`nn`] mp_tac) >>
     srw_tac [][] >> srw_tac [][] ) >>
   SELECT_ELIM_TAC >>
-  conj_tac >- PROVE_TAC [] >>
+  conj_tac >- PROVE_TAC [bagTheory.MEMBER_NOT_EMPTY] >>
   fsrw_tac [DNF_ss,ARITH_ss][] >>
   conj_tac >- (
     srw_tac [][] >>
@@ -155,8 +154,15 @@ fsrw_tac [][MEM_EL,IN_DISJOINT] >- (
       DECIDE_TAC ) >>
     `~(n2 ≤ n)` by metis_tac [FST,SND,PAIR_EQ] >>
     DECIDE_TAC ) >>
-  conj_tac >- PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
-  PROVE_TAC [FST] ) >>
+  conj_tac >- (
+    srw_tac [][] >> spose_not_then strip_assume_tac >>
+    qmatch_assum_rename_tac `v1 ∈ REST s1` [] >>
+    qmatch_assum_rename_tac `(s1,{||}) = EL n1 t` [] >>
+    `~(n1 < n)` by PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+    `~(n < n1)` by PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+    `n = n1` by DECIDE_TAC >>
+    metis_tac [PAIR_EQ,NOT_IN_EMPTY_BAG] ) >>
+  PROVE_TAC [NOT_IN_EMPTY_BAG]) >>
 SELECT_ELIM_TAC >>
 conj_tac >- (
   fsrw_tac [DNF_ss][] >>
@@ -164,19 +170,49 @@ conj_tac >- (
   conj_tac >- (
     srw_tac [][] >>
     `CHOICE s ∈ s` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] >>
-    Cases_on `EL n t` >> srw_tac [][] >>
-    PROVE_TAC [CHOICE_NOT_IN_REST,FST,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] ) >>
-  metis_tac [CHOICE_NOT_IN_REST,FST,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY,REST_SUBSET,SUBSET_DEF] ) >>
+    qmatch_assum_rename_tac `EL n1 t = (s1,m1)` [] >>
+    spose_not_then strip_assume_tac >>
+    `~(n < n1)` by PROVE_TAC [] >>
+    `~(n1 < n)` by PROVE_TAC [] >>
+    `n = n1` by DECIDE_TAC >>
+    PROVE_TAC [PAIR_EQ,NOT_IN_EMPTY_BAG] ) >>
+  srw_tac [][] >>
+  `CHOICE s ∈ s` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
+  qmatch_rename_tac `CHOICE s ∉ REST s1` [] >>
+  qmatch_assum_rename_tac `(s1,{||}) = EL n1 t` [] >>
+  spose_not_then strip_assume_tac >>
+  `CHOICE s ∈ s1` by PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+  `¬(n < n1)` by PROVE_TAC [] >>
+  `¬(n1 < n)` by PROVE_TAC [] >>
+  `n = n1` by DECIDE_TAC >>
+  metis_tac [CHOICE_NOT_IN_REST,PAIR_EQ] ) >>
 SELECT_ELIM_TAC >>
 conj_tac >- PROVE_TAC [] >>
 fsrw_tac [DNF_ss,ARITH_ss][] >>
-conj_tac >- PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+conj_tac >- (
+  srw_tac [][] >>
+  qmatch_assum_rename_tac `EL n1 t = (s1,m)` [] >>
+  `~(n1 < n) ∧ ¬(n < n1)` by PROVE_TAC [] >>
+  `n = n1` by DECIDE_TAC >>
+  PROVE_TAC [NOT_IN_EMPTY_BAG,PAIR_EQ] ) >>
 conj_tac >- (
   conj_tac >- (
     srw_tac [][] >>
-    PROVE_TAC [REST_SUBSET,SUBSET_DEF,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+    spose_not_then strip_assume_tac >>
+    qmatch_assum_rename_tac `CHOICE s ∈ s2` [] >>
+    qmatch_assum_rename_tac `EL n2 t = (s2,m)` [] >>
+    `CHOICE s ∈ s` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
+    `~(n < n2) ∧ ¬(n2 < n)` by PROVE_TAC [] >>
+    `n = n2` by DECIDE_TAC >>
+    PROVE_TAC [NOT_IN_EMPTY_BAG,PAIR_EQ] ) >>
   srw_tac [][] >>
-  metis_tac [CHOICE_NOT_IN_REST,REST_SUBSET,SUBSET_DEF,CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] ) >>
+  spose_not_then strip_assume_tac >>
+  qmatch_assum_rename_tac `CHOICE s ∈ REST s2` [] >>
+  `CHOICE s ∈ s` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
+  qmatch_assum_rename_tac `(s2,{||}) = EL n2 t` [] >>
+  `~(n < n2) ∧ ¬(n2 < n)` by PROVE_TAC [REST_SUBSET,SUBSET_DEF] >>
+  `n = n2` by DECIDE_TAC >>
+  metis_tac [CHOICE_NOT_IN_REST,PAIR_EQ] ) >>
 PROVE_TAC []);
 
 val meqR_def = Define`
