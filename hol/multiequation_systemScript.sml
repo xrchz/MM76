@@ -202,26 +202,12 @@ qmatch_rename_tac `term_size ARB ARB (SAPPLY s (Var (CHOICE s1))) < X` ["X"] >>
 `SAPPLY s (Var (CHOICE s2)) = SAPPLY s tm` by PROVE_TAC [CHOICE_DEF,pred_setTheory.MEMBER_NOT_EMPTY] >>
 PROVE_TAC [psubterm_mono_SAPPLY,psubterm_term_size,prim_recTheory.measure_thm]);
 
+
+
 val transitive_WF_imp_StrongOrder = Q.store_thm( (* this can take you closer to Theorem 3.3 as in the text *)
 "transitive_WF_imp_StrongOrder",
 `transitive R ∧ WF R ⇒ StrongOrder R`,
-srw_tac [][StrongOrder] >-
-  PROVE_TAC [irreflexive_def,WF_NOT_REFL] >>
-srw_tac [][antisymmetric_def] >>
-fsrw_tac [][prim_recTheory.WF_IFF_WELLFOUNDED,prim_recTheory.wellfounded_def] >>
-first_x_assum (qspec_then `\n. if EVEN n then x else y` mp_tac) >>
-srw_tac [][] >>
-Cases_on `EVEN n` >> fsrw_tac [][arithmeticTheory.EVEN] );
-
-val antisymmetric_RINTER = Q.store_thm(
-"antisymmetric_RINTER",
-`antisymmetric R ⇒ antisymmetric (R RINTER R')`,
-srw_tac [][antisymmetric_def,RINTER]);
-
-val transitive_RINTER = Q.store_thm(
-"transitive_RINTER",
-`transitive R1 ∧ transitive R2 ⇒ transitive (R1 RINTER R2)`,
-srw_tac [SATISFY_ss][transitive_def,RINTER]);
+metis_tac [WF_antisymmetric, StrongOrderDef, WF_irreflexive])
 
 val bounded_Order_has_greatest = Q.store_thm(
 "bounded_Order_has_greatest",
