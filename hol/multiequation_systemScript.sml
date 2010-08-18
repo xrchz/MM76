@@ -242,10 +242,8 @@ val top_meq_exists = Q.store_thm( (* Corollary to Theorem 3.3 *)
 "top_meq_exists",
 `FINITE meqs ∧ RES_FORALL meqs wfm ∧ pairwise (RC (inv_image DISJOINT FST)) meqs ∧
  meqs_unifier meqs ≠ {} ∧ meqs ≠ {} ⇒
- ∃meq. meq ∈ meqs ∧
-       ∀meq'. meq' ∈ meqs ⇒
-              (meq' ≠ meq ⇒ DISJOINT (FST meq) (FST meq')) ∧
-              DISJOINT (FST meq) (bag_vars (SND meq'))`,
+ ∃meq. meq ∈ meqs ∧ DISJOINT (FST meq) (right_vars meqs) ∧
+       ∀meq'. meq' ∈ meqs ∧ meq' ≠ meq ⇒ DISJOINT (FST meq) (FST meq')`,
 strip_tac >> imp_res_tac WF_meqR >>
 `StrongOrder (inv (meqR meqs)^+)` by
   PROVE_TAC [StrongOrder,WF_irreflexive,TC_TRANSITIVE,WF_TC,WF_antisymmetric,
@@ -263,7 +261,7 @@ strip_tac >>
 qexists_tac `min` >>
 `!meq. meq ∈ meqs ⇒ ¬ meqR meqs min meq` by PROVE_TAC [TC_SUBSET] >>
 Cases_on `min` >>
-fsrw_tac [][IN_DISJOINT,pairwise_def,RC_DEF,inv_image_def,FORALL_PROD,bag_vars_def,meqR_def] >>
+fsrw_tac [DNF_ss][IN_DISJOINT,pairwise_def,RC_DEF,inv_image_def,FORALL_PROD,right_vars_def,meqR_def] >>
 PROVE_TAC []);
 
 val _ = export_theory ()
