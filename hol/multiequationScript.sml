@@ -288,6 +288,11 @@ metis_tac [subterm_at_rules]);
 val bag_vars_def = Define`
   bag_vars = BIGUNION o IMAGE vars o SET_OF_BAG`;
 
+val bag_vars_SUBSET_right_vars = Q.store_thm(
+"bag_vars_SUBSET_right_vars",
+`(s,m) ∈ meqs ⇒ bag_vars m ⊆ right_vars meqs`,
+srw_tac [SATISFY_ss,DNF_ss][bag_vars_def,right_vars_def,SUBSET_DEF,EXISTS_PROD]);
+
 val frontier_left_vars_occur = Q.store_thm(
 "frontier_left_vars_occur",
 `∀m cf. common_part_frontier m cf ∧ FINITE_BAG m ⇒
