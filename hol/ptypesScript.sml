@@ -77,6 +77,9 @@ val make_assign_def = Define`
   (make_assign inject ptr v = return ptr)`;
 val _ = type_abbrev("assign", ``:'a ptr -> 'a -> store -> 'a ptr # store``);
 
+val _ = Hol_datatype `helpers = <| lookup : 'a lookup ; lookupList : 'a List lookup ; lookupAuxList : 'a AuxList lookup ;
+                                   assign : 'a assign ; assignList : 'a List assign ; assignAuxList : 'a AuxList assign |>`;
+
 val dispose_def = Define`
   (dispose (addr n) = (λs:store. ((), s \\ n))) ∧
   (dispose _ = return ())`;
@@ -84,64 +87,63 @@ val dispose_def = Define`
 val first_free_def = Define`
   first_free = λs:store. (addr (LEAST n. n ∉ FDOM s), s)`;
 
-val make_new_def = Define`make_new assign v = do ptr <- first_free ; assign ptr v od`;
-val _ = type_abbrev("new", ``:'a -> store -> 'a ptr # store``);
+val new_def = Define`new assign v = do ptr <- first_free ; assign ptr v od`;
 
 val CreateList_def = Define`
-  CreateList (newAuxList : 'a AuxList new) (newList : 'a List new) =
-  do l <- newAuxList (AuxList (pnil ARB) (pnil ARB)) ;
-     s <- newList (List l l) ;
+  CreateList h =
+  do l <- new h.assignAuxList (AuxList (pnil ARB) (pnil ARB)) ;
+     s <- new h.assignList (List l l) ;
      return s
   od`;
 
 val HeadOfList_def = Define`
-  HeadOfList (lookupList : 'a List lookup) (lookupAuxList : 'a AuxList lookup) (s:'a List ptr) =
-  do s' <- lookupList s ;
-     s'first' <- lookupAuxList s'.first ;
+  HeadOfList h (s:'a List ptr) =
+  do s' <- h.lookupList s ;
+     s'first' <- h.lookupAuxList s'.first ;
      return s'first'.head
   od`;
 
 val EmptyList_def = Define`
-  EmptyList (lookup : 'a List lookup) (s : 'a List ptr) =
-  do s' <- lookup s ;
+  EmptyList h (s : 'a List ptr) =
+  do s' <- h.lookupList s ;
      return (s'.first = s'.last)
   od`;
 
 val TailOfList_def = Define`
-  TailOfList (lookupList : 'a List lookup) (lookupAuxList : 'a AuxList lookup) (assign : 'a List assign) (s : 'a List ptr) =
-  do s' <- lookupList s ;
+  TailOfList h (s : 'a List ptr) =
+  do s' <- h.lookupList s ;
      l <- return s'.first ;
-     l' <- lookupAuxList l;
-     assign s (List l'.tail s'.last) ;
+     l' <- h.lookupAuxList l;
+     h.assignList s (List l'.tail s'.last) ;
      dispose l ;
      return s
   od`;
 
 val AddToEndOfList_def = Define`
-  AddToEndOfList (newAuxList : 'a AuxList new) (lookupList : 'a List lookup) (assignAuxList : 'a AuxList assign) (assignList : 'a List assign) (t : 'a ptr) (s : 'a List ptr) =
-  do l <- newAuxList (AuxList (pnil ARB) (pnil ARB)) ;
-     s' <- lookupList s ;
-     assignAuxList s'.last (AuxList t l) ;
-     assignList s (List s'.first l) ;
+  AddToEndOfList h (t : 'a ptr) (s : 'a List ptr) =
+  do l <- new h.assignAuxList (AuxList (pnil ARB) (pnil ARB)) ;
+     s' <- h.lookupList s ;
+     h.assignAuxList s'.last (AuxList t l) ;
+     h.assignList s (List s'.first l) ;
      return s
   od`;
 
 val AddToFrontOfList_def = Define`
-  AddToFrontOfList (lookupList : 'a List lookup) (newAuxList : 'a AuxList new) (assign : 'a List assign) (t : 'a ptr) (s : 'a List ptr) =
-  do s' <- lookupList s ;
-     l <- newAuxList (AuxList t s'.first) ;
-     assign s (List l s'.last) ;
+  AddToFrontOfList h (t : 'a ptr) (s : 'a List ptr) =
+  do s' <- h.lookupList s ;
+     l <- new h.assignAuxList (AuxList t s'.first) ;
+     h.assignList s (List l s'.last) ;
      return s
   od`;
 
 val AppendLists_def = Define`
-  AppendLists (lookupList : 'a List lookup) (lookupAuxList : 'a AuxList lookup) (assignList : 'a List assign) (assignAuxList : 'a AuxList assign) (t1 : 'a List ptr) (t2 : 'a List ptr) =
-  do t2' <- lookupList t2 ;
+  AppendLists h (t1 : 'a List ptr) (t2 : 'a List ptr) =
+  do t2' <- h.lookupList t2 ;
      if t2'.first ≠ t2'.last then
-        do t1' <- lookupList t1 ;
-           t2'first' <- lookupAuxList t2'.first ;
-           assignAuxList t1'.last (AuxList t2'first'.head t2'first'.tail) ;
-           assignList t1 (List t1'.first t2'.last) ;
+        do t1' <- h.lookupList t1 ;
+           t2'first' <- h.lookupAuxList t2'.first ;
+           h.assignAuxList t1'.last (AuxList t2'first'.head t2'first'.tail) ;
+           h.assignList t1 (List t1'.first t2'.last) ;
            return ()
         od
      else return () ;
@@ -150,29 +152,21 @@ val AppendLists_def = Define`
      return t1
   od`;
 
+val OfTerms_def = Define`
+  OfTerms = <|
+  lookup := make_lookup ejectTerm ; lookupList := make_lookup ejectTermList ; lookupAuxList := make_lookup ejectTermAuxList ;
+  assign := make_assign injectTerm ; assignList := make_assign injectTermList ; assignAuxList := make_assign injectTermAuxList |>`;
+
 val List_to_list_def = Define`
-  List_to_list (lookup : 'a lookup) (lookupList : 'a List lookup) (lookupAuxList : 'a AuxList lookup) (assignList : 'a List assign) (ptr : 'a List ptr) =
-  do empty <- EmptyList lookupList ptr ;
+  List_to_list h (ptr : 'a List ptr) =
+  do empty <- EmptyList h ptr ;
      if empty then return []
-     else do hd <- HeadOfList lookupList lookupAuxList ptr ;
-             tl <- TailOfList lookupList lookupAuxList assignList ptr ;
-             hd' <- lookup hd ;
-             tl' <- List_to_list lookup lookupList lookupAuxList assignList tl ;
+     else do hd <- HeadOfList h ptr ;
+             tl <- TailOfList h ptr ;
+             hd' <- h.lookup hd ;
+             tl' <- List_to_list h tl ;
              return (hd'::tl')
           od
   od`;
-
-val CreateListOfTerms_def = Define`
-  CreateListOfTerms = CreateList (make_new (make_assign injectTermAuxList)) (make_new (make_assign injectTermList))`;
-val HeadOfListOfTerms_def = Define`
-  HeadOfListOfTerms = HeadOfList (make_lookup ejectTermList) (make_lookup ejectTermAuxList)`;
-val EmptyListOfTerms_def = Define`
-  EmptyListOfTerms = EmptyList (make_lookup ejectTermList)`;
-val TailOfListOfTerms_def = Define`
-  TailOfListOfTerms = TailOfList (make_lookup ejectTermList) (make_lookup ejectTermAuxList) (make_assign injectTermList)`;
-val AddToEndOfListOfTerms_def = Define`
-  AddToEndOfListOfTerms = AddToEndOfList (make_new (make_assign injectTermAuxList)) (make_lookup ejectTermList) (make_assign injectTermAuxList) (make_assign injectTermList)`;
-val AddToFrontOfListOfTerms_def = Define`
-  AddToFrontOfListOfTerms = AddToFrontOfList (make_lookup ejectTermList) (make_new (make_assign injectTermAuxList)) (make_assign injectTermList)`;
 
 val _ = export_theory ()
