@@ -157,16 +157,14 @@ val OfTerms_def = Define`
   lookup := make_lookup ejectTerm ; lookupList := make_lookup ejectTermList ; lookupAuxList := make_lookup ejectTermAuxList ;
   assign := make_assign injectTerm ; assignList := make_assign injectTermList ; assignAuxList := make_assign injectTermAuxList |>`;
 
-val List_to_list_def = Define`
-  List_to_list h (ptr : 'a List ptr) =
-  do empty <- EmptyList h ptr ;
-     if empty then return []
-     else do hd <- HeadOfList h ptr ;
-             tl <- TailOfList h ptr ;
-             hd' <- h.lookup hd ;
-             tl' <- List_to_list h tl ;
-             return (hd'::tl')
-          od
-  od`;
+val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
+  (((EmptyList h ptr) s = (SOME T, s')) ⇒ corresponding_list ptr s []) ∧
+  (((do hd <- HeadOfList h ptr ;
+        tl <- TailOfList h ptr ;
+        (hd':'a) <- h.lookup hd ;
+        return (hd',tl)
+     od) s = (SOME (hd',tl),s')) ∧
+   corresponding_list tl s' tl' ⇒
+   corresponding_list ptr s (hd'::tl'))`;
 
 val _ = export_theory ()
