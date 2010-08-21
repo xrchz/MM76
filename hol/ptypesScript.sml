@@ -84,10 +84,10 @@ val dispose_def = Define`
   (dispose (addr n) = (λs:store. ((), s \\ n))) ∧
   (dispose _ = return ())`;
 
-val first_free_def = Define`
-  first_free = λs:store. (addr (LEAST n. n ∉ FDOM s), s)`;
+val free_addr_def = Define`
+  free_addr = λs:store. (addr (@n. n ∉ FDOM s), s)`;
 
-val new_def = Define`new assign v = do ptr <- first_free ; assign ptr v od`;
+val new_def = Define`new assign v = do ptr <- free_addr ; assign ptr v od`;
 
 val CreateList_def = Define`
   CreateList h =
