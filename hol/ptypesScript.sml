@@ -195,14 +195,14 @@ srw_tac [][valid_helpers_def,valid_assign_lookup_def,OfTerms_def,make_assign_def
            FLOOKUP_UPDATE,OPTIONT_UNIT_def]);
 
 val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
-  (((EmptyList h ptr) s = (SOME T, s')) ⇒ corresponding_list ptr s []) ∧
+  (((EmptyList h ptr) s = (SOME T, s')) ⇒ corresponding_list h ptr s []) ∧
   (((do hd <- HeadOfList h ptr ;
         tl <- TailOfList h ptr ;
         (hd':'a) <- h.lookup hd ;
         return (hd',tl)
      od) s = (SOME (hd',tl),s')) ∧
-   corresponding_list tl s' tl' ⇒
-   corresponding_list ptr s (hd'::tl'))`;
+   corresponding_list h tl s' tl' ⇒
+   corresponding_list h ptr s (hd'::tl'))`;
 
 val NOTIN_INFINITE_FDOM_exists = Q.store_thm(
 "NOTIN_INFINITE_FDOM_exists",
@@ -212,10 +212,10 @@ val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
 
 val CreateList_creates_empty = Q.store_thm(
 "CreateList_creates_empty",
-`valid_helpers h ∧ (CreateList h s0 = (ptr, s)) ⇒ corresponding_list ptr s []`,
+`valid_helpers h ∧ (CreateList h s0 = (ptr, s)) ⇒ corresponding_list h ptr s []`,
 srw_tac [][CreateList_def,Once corresponding_list_cases,
            BIND_DEF,UNIT_DEF] >>
-map_every qexists_tac [`h`,`s`] >>
+qexists_tac `s` >>
 qmatch_assum_abbrev_tac `UNCURRY f (new h.assignAuxList al s0) = (ptr,s)` >>
 Cases_on `new h.assignAuxList al s0` >>
 qmatch_assum_rename_tac `new h.assignAuxList al s0 = (ptr',s')` [] >>
