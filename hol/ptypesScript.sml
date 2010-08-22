@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib Parse optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory monadsyntax lcsymtacs
+open HolKernel bossLib boolLib boolSimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory monadsyntax lcsymtacs
 
 val _ = new_theory "ptypes"
 
@@ -185,10 +185,58 @@ qho_match_abbrev_tac `(UNCURRY f (UNCURRY g (free_addr s0)) = (ptr,s)) ⇒ X` >>
 Q.ABBREV_TAC `P = (λx. (UNCURRY f (UNCURRY g x) = (ptr,s)) ⇒ X)` >>
 qsuff_tac `P (free_addr s0)` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
-srw_tac [][Abbr`P`,Abbr`g`,Abbr`f`,IGNORE_BIND_DEF,BIND_DEF,UNIT_DEF,assign_def,pairTheory.UNCURRY,Abbr`X`] >>
+srw_tac [][Abbr`P`,Abbr`g`,Abbr`f`,IGNORE_BIND_DEF,BIND_DEF,UNIT_DEF,assign_def,UNCURRY,Abbr`X`] >>
 Q.ABBREV_TAC `P = (λx. corresponding_list (FST x) (SND (assign (FST x) (List (addr n) (addr n)) (SND x))) [])`  >>
 qsuff_tac `P (free_addr (s0 |+ (n,inject (AuxList (pnil (ARB:'a)) (pnil ARB)))))` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,assign_def,Once corresponding_list_cases,EmptyList_def,OPTIONT_BIND_def,BIND_DEF,lookup_def,OPTIONT_UNIT_def,UNIT_DEF,FLOOKUP_UPDATE]);
+
+val lookup_pnil = Q.store_thm(
+"lookup_pnil",
+`lookup (pnil a) s = (NONE, s)`,
+srw_tac [][lookup_def,OPTIONT_FAIL_def,UNIT_DEF]);
+val _ = export_rewrites ["lookup_pnil"];
+
+val lookup_preserves_store = Q.store_thm(
+"lookup_preserves_store",
+`SND (lookup ptr s) = s`,
+Cases_on `ptr` >> srw_tac [][lookup_def,OPTIONT_FAIL_def,OPTIONT_UNIT_def,UNIT_DEF,OPTIONT_BIND_def,BIND_DEF,FLOOKUP_DEF]);
+
+val HeadOfList_preserves_store = Q.store_thm(
+"HeadOfList_preserves_store",
+`SND (HeadOfList l s) = s`,
+`SND (lookup l s) = s` by MATCH_ACCEPT_TAC lookup_preserves_store >>
+srw_tac [][HeadOfList_def,OPTIONT_BIND_def,BIND_DEF,lookup_preserves_store,OPTIONT_FAIL_def,OPTIONT_UNIT_def,UNIT_DEF,UNCURRY] >>
+Cases_on `FST (lookup l s)` >> srw_tac [][] >>
+`SND (lookup x.first s) = s` by MATCH_ACCEPT_TAC lookup_preserves_store >>
+srw_tac [][UNCURRY] >>
+Cases_on `FST (lookup x.first s)` >> srw_tac [][]);
+
+val HeadOfList_pnil = Q.store_thm(
+"HeadOfList_pnil",
+`HeadOfList (pnil a) s = (NONE, s)`,
+srw_tac [][HeadOfList_def,OPTIONT_BIND_def,UNIT_DEF,BIND_DEF]);
+val _ = export_rewrites["HeadOfList_pnil"];
+
+val TailOfList_pnil = Q.store_thm(
+"TailOfList_pnil",
+`TailOfList (pnil a) s = (NONE, s)`,
+srw_tac [][TailOfList_def,OPTIONT_BIND_def,BIND_DEF,UNIT_DEF]);
+val _ = export_rewrites["TailOfList_pnil"];
+
+val TailOfList_preserves_store = Q.store_thm(
+"TailOfList_preserves_store",
+`(lookup (addr n : 'a List ptr) s = (SOME l', s')) ∧ (l'.first = addr m) ⇒ (SND (TailOfList (addr n : 'a List ptr) s) \\ n \\ m = s \\ n \\ m)`,
+srw_tac [][TailOfList_def,OPTIONT_BIND_def,BIND_DEF,UNCURRY,UNIT_DEF,assign_def,dispose_def,OPTIONT_UNIT_def] >>
+`s' = s` by PROVE_TAC [lookup_preserves_store,SND] >>
+`SND (lookup (addr m : 'a AuxList ptr) s) = s` by PROVE_TAC [lookup_preserves_store,SND] >>
+Cases_on `FST (lookup (addr m : 'a AuxList ptr) s)` >> srw_tac [][IGNORE_BIND_DEF,BIND_DEF] >>
+srw_tac [][DOMSUB_IDEM,DOMSUB_COMMUTES] >>
+PROVE_TAC [DOMSUB_COMMUTES,DOMSUB_FUPDATE]);
+
+val DOMSUB_FLOOKUP_NEQ = Q.store_thm(
+"DOMSUB_FLOOKUP_NEQ",
+`k1 ≠ k2 ⇒ (FLOOKUP (fm \\ k1) k2 = FLOOKUP fm k2)`,
+srw_tac [][FLOOKUP_DEF,DOMSUB_FAPPLY_NEQ]);
 
 val _ = export_theory ()
