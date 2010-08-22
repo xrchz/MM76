@@ -62,6 +62,19 @@ val ejectTempMultiequation_def = Define `ejectTempMultiequation (injectTempMulti
 val ejectTempMultiequationAuxList_def = Define `ejectTempMultiequationAuxList (injectTempMultiequationAuxList a) = a`;
 val ejectTempMultiequationList_def = Define `ejectTempMultiequationList (injectTempMultiequationList a) = a`;
 val ejectSystem_def = Define `ejectSystem (injectSystem a) = a`;
+val _ = export_rewrites [
+"ejectVariable_def",
+"ejectSetOfVariables_def",
+"ejectTerm_def",
+"ejectTermAuxList_def",
+"ejectTermList_def",
+"ejectMultiequation_def",
+"ejectMultiequationAuxList_def",
+"ejectMultiequationList_def",
+"ejectTempMultiequation_def",
+"ejectTempMultiequationAuxList_def",
+"ejectTempMultiequationList_def",
+"ejectSystem_def"];
 
 val _ = type_abbrev("store", ``:num |-> value``);
 
@@ -79,6 +92,23 @@ val _ = type_abbrev("assign", ``:'a ptr -> 'a -> store -> 'a ptr # store``);
 
 val _ = Hol_datatype `helpers = <| lookup : 'a lookup ; lookupList : 'a List lookup ; lookupAuxList : 'a AuxList lookup ;
                                    assign : 'a assign ; assignList : 'a List assign ; assignAuxList : 'a AuxList assign |>`;
+
+val valid_assign_lookup_def = Define `
+  valid_assign_lookup assign lookup =
+  ∀n v s ptr' s' a.
+  ((assign (addr n) v s = (ptr', s')) ⇒
+   (ptr' = addr n) ∧
+   (s \\ n = s' \\ n) ∧
+   (lookup (addr n) s' = (SOME v, s'))) ∧
+  ((assign (pnil a) v s = (ptr', s')) ⇒
+   (ptr' = pnil a) ∧
+   (s' = s))`;
+
+val valid_helpers_def = Define`
+  valid_helpers h =
+  valid_assign_lookup h.assign h.lookup ∧
+  valid_assign_lookup h.assignAuxList h.lookupAuxList ∧
+  valid_assign_lookup h.assignList h.lookupList`;
 
 val dispose_def = Define`
   (dispose (addr n) = (λs:store. ((), s \\ n))) ∧
@@ -157,6 +187,13 @@ val OfTerms_def = Define`
   lookup := make_lookup ejectTerm ; lookupList := make_lookup ejectTermList ; lookupAuxList := make_lookup ejectTermAuxList ;
   assign := make_assign injectTerm ; assignList := make_assign injectTermList ; assignAuxList := make_assign injectTermAuxList |>`;
 
+val valid_helpers_OfTerms = Q.store_thm(
+"valid_helpers_OfTerms",
+`valid_helpers OfTerms`,
+srw_tac [][valid_helpers_def,valid_assign_lookup_def,OfTerms_def,make_assign_def,raw_assign_def,
+           make_lookup_def,IGNORE_BIND_DEF,BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,raw_lookup_def,
+           FLOOKUP_UPDATE,OPTIONT_UNIT_def]);
+
 val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
   (((EmptyList h ptr) s = (SOME T, s')) ⇒ corresponding_list ptr s []) ∧
   (((do hd <- HeadOfList h ptr ;
@@ -166,5 +203,34 @@ val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases)
      od) s = (SOME (hd',tl),s')) ∧
    corresponding_list tl s' tl' ⇒
    corresponding_list ptr s (hd'::tl'))`;
+
+val NOTIN_INFINITE_FDOM_exists = Q.store_thm(
+"NOTIN_INFINITE_FDOM_exists",
+`INFINITE (UNIV : 'a set) ⇒ ∃x. x ∉ (FDOM f : 'a set)`,
+PROVE_TAC [pred_setTheory.IN_INFINITE_NOT_FINITE,FDOM_FINITE]);
+val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
+
+val CreateList_creates_empty = Q.store_thm(
+"CreateList_creates_empty",
+`valid_helpers h ∧ (CreateList h s0 = (ptr, s)) ⇒ corresponding_list ptr s []`,
+srw_tac [][CreateList_def,Once corresponding_list_cases,
+           BIND_DEF,UNIT_DEF] >>
+map_every qexists_tac [`h`,`s`] >>
+qmatch_assum_abbrev_tac `UNCURRY f (new h.assignAuxList al s0) = (ptr,s)` >>
+Cases_on `new h.assignAuxList al s0` >>
+qmatch_assum_rename_tac `new h.assignAuxList al s0 = (ptr',s')` [] >>
+fsrw_tac [][pairTheory.UNCURRY,Abbr`f`] >>
+fsrw_tac [][new_def,BIND_DEF,UNIT_DEF,free_addr_def] >>
+`valid_assign_lookup h.assignAuxList h.lookupAuxList ∧
+ valid_assign_lookup h.assignList h.lookupList` by PROVE_TAC [valid_helpers_def] >>
+qpat_assum `h.assignAuxList n al s0 = X` mp_tac >>
+SELECT_ELIM_TAC >> srw_tac [][] >>
+qmatch_assum_rename_tac `n ∉ FDOM s0` [] >>
+qpat_assum `h.assignList m l s' = X` mp_tac >>
+SELECT_ELIM_TAC >> srw_tac [][] >>
+qmatch_assum_rename_tac `m ∉ FDOM s'` [] >>
+`(ptr' = addr n) ∧ (h.lookupAuxList (addr n) s' = (SOME al, s'))` by metis_tac [valid_assign_lookup_def] >>
+`(ptr = addr m) ∧ (h.lookupList (addr m) s = (SOME (List ptr' ptr'), s))` by metis_tac [valid_assign_lookup_def] >>
+srw_tac [][EmptyList_def,BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,OPTIONT_UNIT_def]);
 
 val _ = export_theory ()
