@@ -93,16 +93,16 @@ val _ = type_abbrev("assign", ``:'a ptr -> 'a -> store -> 'a ptr # store``);
 val _ = Hol_datatype `helpers = <| lookup : 'a lookup ; lookupList : 'a List lookup ; lookupAuxList : 'a AuxList lookup ;
                                    assign : 'a assign ; assignList : 'a List assign ; assignAuxList : 'a AuxList assign |>`;
 
-val valid_assign_lookup_def = Define `
-  valid_assign_lookup assign lookup =
-  ∀n v s ptr' s' a.
-  ((assign (addr n) v s = (ptr', s')) ⇒
-   (ptr' = addr n) ∧
-   (s \\ n = s' \\ n) ∧
-   (lookup (addr n) s' = (SOME v, s'))) ∧
-  ((assign (pnil a) v s = (ptr', s')) ⇒
-   (ptr' = pnil a) ∧
-   (s' = s))`;
+val valid_assign_lookup_def = Define`
+valid_assign_lookup assign lookup =
+  (∀a v s ptr' s'. (assign (pnil a) v s = (ptr', s')) ⇔ (ptr' = pnil a) ∧ (s' = s)) ∧
+  (∀ptr s vo s'. (lookup ptr s = (vo, s')) ⇒ (s' = s)) ∧
+  (∀ptr s. (lookup ptr s = (NONE, s)) ⇔ ((∃a. ptr = pnil a) ∨ (∃n. (ptr = addr n) ∧ n ∉ FDOM s))) ∧
+  (∀n v s ptr' s'. (assign (addr n) v s = (ptr', s')) ⇒
+                   (ptr' = addr n) ∧
+                   (s \\ n = s' \\ n) ∧
+                   (lookup (addr n) s' = (SOME v, s'))) ∧
+  (∀n s1 s2 v. (lookup (addr n) s1 = (SOME v, s1)) ∧ (FLOOKUP s1 n = FLOOKUP s2 n) ⇒ (lookup (addr n) s2 = (SOME v, s2)))`;
 
 val valid_helpers_def = Define`
   valid_helpers h =
@@ -190,9 +190,17 @@ val OfTerms_def = Define`
 val valid_helpers_OfTerms = Q.store_thm(
 "valid_helpers_OfTerms",
 `valid_helpers OfTerms`,
-srw_tac [][valid_helpers_def,valid_assign_lookup_def,OfTerms_def,make_assign_def,raw_assign_def,
+let
+val thms = [valid_helpers_def,valid_assign_lookup_def,OfTerms_def,make_assign_def,raw_assign_def,
            make_lookup_def,IGNORE_BIND_DEF,BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,raw_lookup_def,
-           FLOOKUP_UPDATE,OPTIONT_UNIT_def]);
+           FLOOKUP_UPDATE,OPTIONT_UNIT_def,OPTIONT_FAIL_def,FLOOKUP_DEF,EQ_IMP_THM]
+in
+srw_tac [] thms >>
+TRY (Cases_on `ptr`) >>
+fsrw_tac [] thms >>
+pop_assum mp_tac >> srw_tac [][] >>
+fsrw_tac [][]
+end);
 
 val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
   (((EmptyList h ptr) s = (SOME T, s')) ⇒ corresponding_list h ptr s []) ∧
