@@ -755,16 +755,6 @@ SRW_TAC [][EQC_DEF,FUN_EQ_THM,RC_DEF,SC_DEF,TC_DEF,EQ_IMP_THM] THEN
 FIRST_X_ASSUM MATCH_MP_TAC THEN
 SRW_TAC [][]);
 
-val pairwise_UNION = Q.store_thm(
-"pairwise_UNION",
-`pairwise R (s1 ∪ s2) ⇔ pairwise R s1 ∧ pairwise R s2 ∧ (!x y. x ∈ s1 ∧ y ∈ s2 ⇒ R x y ∧ R y x)`,
-srw_tac [DNF_ss][pairwise_def] >> metis_tac []);
-
-val pairwise_SUBSET = Q.store_thm(
-"pairwise_SUBSET",
-`∀R s t. pairwise R t ∧ s ⊆ t ⇒ pairwise R s`,
-srw_tac [][SUBSET_DEF,pairwise_def]);
-
 val FINITE_BAG_IMAGE_eq_INSERT = Q.store_thm(
 "FINITE_BAG_IMAGE_eq_INSERT",
 `∀b. FINITE_BAG b ⇒ ∀x c. ((BAG_IMAGE f b = BAG_INSERT x c) ⇔ ∃e b0. (x = f e) ∧ (BAG_DELETE b e b0) ∧ (c = BAG_IMAGE f b0))`,

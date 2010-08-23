@@ -2,9 +2,6 @@ open HolKernel boolLib boolSimps bossLib Parse SatisfySimps termTheory bagTheory
 
 val _ = new_theory "multiequation"
 
-val pairwise_def = Define`
-  pairwise P s = ∀e1 e2. e1 ∈ s ∧ e2 ∈ s ⇒ P e1 e2`;
-
 val _ = type_abbrev("multiequation", ``:'a set # ('a,'b) term bag``);
 
 val wfm_def = Define`
