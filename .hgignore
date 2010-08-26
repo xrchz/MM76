@@ -12,3 +12,4 @@ syntax: glob
 *Theory.sml
 *.ui
 *.uo
+dump
