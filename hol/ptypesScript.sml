@@ -6,7 +6,7 @@ val _ = Hol_datatype `ptr = addr of 'a itself => num`;
 val num_to_ptr_def = Define `num_to_ptr n = addr (:'a) n`;
 val ptr_to_num_def = Define `ptr_to_num (addr _ n) = n`;
 val _ = export_rewrites ["num_to_ptr_def","ptr_to_num_def"];
-val _ = overload_on("pnil",``addr ARB 0``);
+val _ = overload_on("pnil",``addr (:'a) 0``);
 
 val _ = type_abbrev ("varname",``:string``);
 val _ = type_abbrev ("funname",``:string``);
@@ -135,7 +135,7 @@ val dispose_def = Define`
   dispose (addr _ n) = λs:store. ((), s \\ n)`;
 
 val free_addr_def = Define`
-  free_addr = λs:store. (addr ARB (@n. n ≠ 0 ∧ n ∉ FDOM s), s)`;
+  free_addr = λs:store. (addr (:'a) (@n. n ≠ 0 ∧ n ∉ FDOM s), s)`;
 
 val raw_new_def = Define`raw_new emb v = do ptr <- free_addr ; raw_assign emb ptr v ; return ptr od`;
 val _ = overload_on("new", ``λv:Variable. raw_new embed_Variable v``);
@@ -230,7 +230,7 @@ val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
 
 val free_addr_elim_thm = Q.store_thm(
 "free_addr_elim_thm",
-`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s ⇒ P (addr ARB n,s)) ⇒ P (free_addr s)`,
+`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s ⇒ P (addr (:'a) n,s)) ⇒ P (free_addr s)`,
 srw_tac [][free_addr_def] >>
 SELECT_ELIM_TAC >>
 `∃x. x ∉ FDOM (s|+(0,ARB))` by srw_tac [][] >>
@@ -247,7 +247,7 @@ Q.ABBREV_TAC `P = (λx. (UNCURRY f (UNCURRY g x) = (ptr,s)) ⇒ X)` >>
 qsuff_tac `P (free_addr s0)` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,Abbr`g`,Abbr`f`,UNCURRY,Abbr`X`] >>
-Q.ABBREV_TAC `P = (λx. corresponding_list emb (FST x) (SND (assign (FST x) (List (addr ARB n) (addr ARB n)) (SND x))) [])`  >>
+Q.ABBREV_TAC `P = (λx. corresponding_list emb (FST x) (SND (assign (FST x) (List (addr (:'a AuxList) n) (addr (:'a AuxList) n)) (SND x))) [])`  >>
 qsuff_tac `P (free_addr (s0 |+ (n,AuxList_value 0 0)))` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
