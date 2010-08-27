@@ -297,21 +297,29 @@ SELECT_ELIM_TAC >>
 `∃x. x ∉ FDOM (s.store|+(0,ARB))` by srw_tac [][] >>
 fsrw_tac [SATISFY_ss][]);
 
+fun is_free_addr tm = let
+  val (f,_) = dest_comb tm
+  val ("free_addr",ty) = dest_const f
+in
+  can (match_type ``:state -> 'a ptr # state``) ty
+end handle HOL_ERR _ => false | Bind => false
+
+fun free_addr_elim_tac (g as (_, w)) = let
+  val t = find_term is_free_addr w
+in
+  CONV_TAC (UNBETA_CONV t) THEN
+  MATCH_MP_TAC free_addr_elim_thm THEN BETA_TAC
+end g
+
 val _ = augment_srw_ss [rewrites [BIND_DEF,IGNORE_BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,OPTIONT_FAIL_def,OPTIONT_UNIT_def]]
 
 val CreateList_creates_empty = Q.store_thm(
 "CreateList_creates_empty",
 `(CreateList emb s0 = (ptr, s)) ⇒ corresponding_list emb ptr s []`,
 simp_tac (srw_ss()) [CreateList_def,raw_new_def] >>
-qho_match_abbrev_tac `(UNCURRY f (UNCURRY g (free_addr s0)) = (ptr,s)) ⇒ X` >>
-Q.ABBREV_TAC `P = (λx. (UNCURRY f (UNCURRY g x) = (ptr,s)) ⇒ X)` >>
-qsuff_tac `P (free_addr s0)` >- srw_tac [][Abbr`P`] >>
-ho_match_mp_tac free_addr_elim_thm >>
-srw_tac [][Abbr`P`,Abbr`g`,Abbr`f`,UNCURRY,Abbr`X`] >>
-Q.ABBREV_TAC `P = (λx. corresponding_list emb (FST x) (SND (assign emb (FST x) (List (addr (:'a AuxList) n) (addr (:'a AuxList) n)) (SND x))) [])`  >>
-qsuff_tac `P (free_addr (s0 with store updated_by (λs. s |+ (n,AuxList_value 0 0))))` >- srw_tac [][Abbr`P`] >>
-ho_match_mp_tac free_addr_elim_thm >>
-srw_tac [][Abbr`P`,Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
+free_addr_elim_tac >> srw_tac [][UNCURRY] >>
+free_addr_elim_tac >>
+srw_tac [][Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
 
 val lookup_preserves_store = Q.store_thm(
 "lookup_preserves_store",
