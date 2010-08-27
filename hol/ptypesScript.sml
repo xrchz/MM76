@@ -35,6 +35,8 @@ value = Variable_value of varname => num
 
 val _ = type_abbrev("store", ``:num |-> value``);
 
+val _ = Hol_datatype `state = <| store : store |>`;
+
 val _ = Hol_datatype `
 type = Variable_type
      | SetOfVariables_type
@@ -142,7 +144,7 @@ in
 end
 
 val raw_lookup_def = Define`
-  raw_lookup (emb:'a embed) (addr _ n : 'a ptr) = OPTIONT_BIND (λs. (FLOOKUP s n, s)) (λv. UNIT (emb.project v))`;
+  raw_lookup (emb:'a embed) (addr _ n : 'a ptr) = OPTIONT_BIND (λs. (FLOOKUP s.store n, s)) (λv. UNIT (emb.project v))`;
 val _ = overload_on("lookup", ``λp:Variable ptr. raw_lookup embed_Variable p``);
 val _ = overload_on("lookup", ``λp:SetOfVariables ptr. raw_lookup embed_SetOfVariables p``);
 val _ = overload_on("lookup", ``λp:Term ptr. raw_lookup embed_Term p``);
@@ -153,7 +155,7 @@ val _ = overload_on("lookup", ``λemb. raw_lookup (embed_AuxList emb)``);
 val _ = overload_on("lookup", ``λemb. raw_lookup (embed_List emb)``);
 
 val raw_assign_def = Define`
-  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v = λs:store. ((), s |+ (n, emb.inject v))`;
+  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v = λs. ((), s with store updated_by (λs. s |+ (n, emb.inject v)))`;
 val _ = overload_on("assign", ``λp:Variable ptr. raw_assign embed_Variable p``);
 val _ = overload_on("assign", ``λp:SetOfVariables ptr. raw_assign embed_SetOfVariables p``);
 val _ = overload_on("assign", ``λp:Term ptr. raw_assign embed_Term p``);
@@ -164,10 +166,10 @@ val _ = overload_on("assign", ``λemb. raw_assign (embed_AuxList emb)``);
 val _ = overload_on("assign", ``λemb. raw_assign (embed_List emb)``);
 
 val dispose_def = Define`
-  dispose (addr _ n) = λs:store. ((), s \\ n)`;
+  dispose (addr _ n) = λs. ((), s with store updated_by (λs. s \\ n))`;
 
 val free_addr_def = Define`
-  free_addr = λs:store. (addr (:'a) (@n. n ≠ 0 ∧ n ∉ FDOM s), s)`;
+  free_addr = λs. (addr (:'a) (@n. n ≠ 0 ∧ n ∉ FDOM s.store), s)`;
 
 val raw_new_def = Define`raw_new emb v = do ptr <- free_addr ; raw_assign emb ptr v ; return ptr od`;
 val _ = overload_on("new", ``λv:Variable. raw_new embed_Variable v``);
@@ -290,10 +292,10 @@ val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
 
 val free_addr_elim_thm = Q.store_thm(
 "free_addr_elim_thm",
-`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s ⇒ P (addr (:'a) n,s)) ⇒ P (free_addr s)`,
+`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s.store ⇒ P (addr (:'a) n,s)) ⇒ P (free_addr s)`,
 srw_tac [][free_addr_def] >>
 SELECT_ELIM_TAC >>
-`∃x. x ∉ FDOM (s|+(0,ARB))` by srw_tac [][] >>
+`∃x. x ∉ FDOM (s.store|+(0,ARB))` by srw_tac [][] >>
 fsrw_tac [SATISFY_ss][]);
 
 val _ = augment_srw_ss [rewrites [BIND_DEF,IGNORE_BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,OPTIONT_FAIL_def,OPTIONT_UNIT_def]]
@@ -308,7 +310,7 @@ qsuff_tac `P (free_addr s0)` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,Abbr`g`,Abbr`f`,UNCURRY,Abbr`X`] >>
 Q.ABBREV_TAC `P = (λx. corresponding_list emb (FST x) (SND (assign emb (FST x) (List (addr (:'a AuxList) n) (addr (:'a AuxList) n)) (SND x))) [])`  >>
-qsuff_tac `P (free_addr (s0 |+ (n,AuxList_value 0 0)))` >- srw_tac [][Abbr`P`] >>
+qsuff_tac `P (free_addr (s0 with store updated_by (λs. s |+ (n,AuxList_value 0 0))))` >- srw_tac [][Abbr`P`] >>
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
 
@@ -329,7 +331,7 @@ Cases_on `FST (lookup emb x.first s)` >> srw_tac [][]);
 
 val TailOfList_preserves_store = Q.store_thm(
 "TailOfList_preserves_store",
-`(lookup emb l s = (SOME l', s')) ⇒ (SND (TailOfList emb l s) \\ (ptr_to_num l) \\ (ptr_to_num l'.first) = s \\ (ptr_to_num l) \\ (ptr_to_num l'.first))`,
+`(lookup emb l s = (SOME l', s')) ⇒ ((SND (TailOfList emb l s)).store \\ (ptr_to_num l) \\ (ptr_to_num l'.first) = s.store \\ (ptr_to_num l) \\ (ptr_to_num l'.first))`,
 srw_tac [][TailOfList_def,UNCURRY] >>
 `s' = s` by PROVE_TAC [lookup_preserves_store,SND] >>
 `SND (lookup emb l'.first s) = s` by PROVE_TAC [lookup_preserves_store,SND] >>
@@ -345,7 +347,7 @@ Cases_on `FST (lookup emb l s) ` >> srw_tac [][]);
 
 val dispose_preserves_store = Q.store_thm(
 "dispose_preserves_store",
-`s \\ ptr_to_num p = SND (dispose p s) \\ ptr_to_num p`,
+`s.store \\ ptr_to_num p = (SND (dispose p s)).store \\ ptr_to_num p`,
 Cases_on `p` >> srw_tac [][]);
 
 val lookup_dispose = Q.store_thm(
