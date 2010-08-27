@@ -2,6 +2,10 @@ open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionThe
 
 val _ = new_theory "ptypes"
 
+val _ = overload_on("=+", ``λk v f. f |+ (k,v)``);
+val _ = overload_on("=+", ``UPDATE``);
+val _ = overload_on("|+", ``λf kv. f |+ kv``);
+
 val _ = Hol_datatype `ptr = addr of 'a itself => num`;
 val num_to_ptr_def = Define `num_to_ptr n = addr (:'a) n`;
 val ptr_to_num_def = Define `ptr_to_num (addr _ n) = n`;
@@ -154,7 +158,7 @@ val _ = overload_on("lookup", ``λemb. raw_lookup (embed_AuxList emb)``);
 val _ = overload_on("lookup", ``λemb. raw_lookup (embed_List emb)``);
 
 val raw_assign_def = Define`
-  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v = λs. ((), s with store updated_by (λs. s |+ (n, emb.inject v)))`;
+  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v = λs. ((), s with store updated_by (n =+ (emb.inject v)))`;
 val _ = overload_on("assign", ``λp:Variable ptr. raw_assign embed_Variable p``);
 val _ = overload_on("assign", ``λp:SetOfVariables ptr. raw_assign embed_SetOfVariables p``);
 val _ = overload_on("assign", ``λp:Term ptr. raw_assign embed_Term p``);
