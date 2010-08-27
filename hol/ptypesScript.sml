@@ -312,14 +312,6 @@ qsuff_tac `P (free_addr (s0 |+ (n,AuxList_value 0 0)))` >- srw_tac [][Abbr`P`] >
 ho_match_mp_tac free_addr_elim_thm >>
 srw_tac [][Abbr`P`,Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
 
-(* only true for "well-formed" stores that don't bind 0. But maybe lookup should have this property for all stores anyway?
-val lookup_pnil = Q.store_thm(
-"lookup_pnil",
-`lookup pnil s = (NONE, s)`,
-srw_tac [][]);
-val _ = export_rewrites ["lookup_pnil"];
-*)
-
 val lookup_preserves_store = Q.store_thm(
 "lookup_preserves_store",
 `SND (raw_lookup emb ptr s) = s`,
@@ -335,22 +327,6 @@ Cases_on `FST (lookup emb l s)` >> srw_tac [][] >>
 srw_tac [][UNCURRY] >>
 Cases_on `FST (lookup emb x.first s)` >> srw_tac [][]);
 
-(* same as lookup_pnil
-val HeadOfList_pnil = Q.store_thm(
-"HeadOfList_pnil",
-`HeadOfList (pnil a) s = (NONE, s)`,
-srw_tac [][HeadOfList_def,OPTIONT_BIND_def,UNIT_DEF,BIND_DEF]);
-val _ = export_rewrites["HeadOfList_pnil"];
-*)
-
-(* same as lookup_pnil
-val TailOfList_pnil = Q.store_thm(
-"TailOfList_pnil",
-`TailOfList (pnil a) s = (NONE, s)`,
-srw_tac [][TailOfList_def,OPTIONT_BIND_def,BIND_DEF,UNIT_DEF]);
-val _ = export_rewrites["TailOfList_pnil"];
-*)
-
 val TailOfList_preserves_store = Q.store_thm(
 "TailOfList_preserves_store",
 `(lookup emb l s = (SOME l', s')) ⇒ (SND (TailOfList emb l s) \\ (ptr_to_num l) \\ (ptr_to_num l'.first) = s \\ (ptr_to_num l) \\ (ptr_to_num l'.first))`,
@@ -360,5 +336,50 @@ srw_tac [][TailOfList_def,UNCURRY] >>
 Cases_on `FST (lookup emb l'.first s)` >> srw_tac [][] >>
 Cases_on `l` >> Cases_on `l'.first` >>
 srw_tac [][DOMSUB_COMMUTES]);
+
+val EmptyList_preserves_store = Q.store_thm(
+"EmptyList_preserves_store",
+`SND (EmptyList emb l s) = s`,
+srw_tac [][EmptyList_def,lookup_preserves_store,UNCURRY] >>
+Cases_on `FST (lookup emb l s) ` >> srw_tac [][]);
+
+val dispose_preserves_store = Q.store_thm(
+"dispose_preserves_store",
+`s \\ ptr_to_num p = SND (dispose p s) \\ ptr_to_num p`,
+Cases_on `p` >> srw_tac [][]);
+
+val lookup_dispose = Q.store_thm(
+"lookup_dispose",
+`raw_lookup emb p2 (SND (dispose p1 s)) = (if ptr_to_num p1 = ptr_to_num p2 then NONE else (FST (raw_lookup emb p2 s)), (SND (dispose p1 s)))`,
+Cases_on `p1` >> Cases_on `p2` >> Cases_on `emb` >> srw_tac [][] >>
+fsrw_tac [][DOMSUB_FLOOKUP_THM] >>
+srw_tac [][FLOOKUP_DEF]);
+
+val lookup_assign = Q.store_thm(
+"lookup_assign",
+`is_embed emb ⇒
+ ∀ptr v s s'. (raw_assign emb ptr v s = ((), s')) ⇒ (raw_lookup emb ptr s' = (SOME v, s'))`,
+srw_tac [][] >> Cases_on `ptr` >> Cases_on `emb` >>
+fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE]);
+
+(* only true for "well-formed" stores that don't bind 0. But maybe lookup should have this property for all stores anyway?
+val lookup_pnil = Q.store_thm(
+"lookup_pnil",
+`lookup pnil s = (NONE, s)`,
+srw_tac [][]);
+val _ = export_rewrites ["lookup_pnil"];
+
+val HeadOfList_pnil = Q.store_thm(
+"HeadOfList_pnil",
+`HeadOfList (pnil a) s = (NONE, s)`,
+srw_tac [][HeadOfList_def,OPTIONT_BIND_def,UNIT_DEF,BIND_DEF]);
+val _ = export_rewrites["HeadOfList_pnil"];
+
+val TailOfList_pnil = Q.store_thm(
+"TailOfList_pnil",
+`TailOfList (pnil a) s = (NONE, s)`,
+srw_tac [][TailOfList_def,OPTIONT_BIND_def,BIND_DEF,UNIT_DEF]);
+val _ = export_rewrites["TailOfList_pnil"];
+*)
 
 val _ = export_theory ()
