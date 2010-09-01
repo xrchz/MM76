@@ -131,13 +131,19 @@ val _ = overload_on("embed_List", ``λemb:'a embed. embed (List_type emb.type) i
 val _ = export_rewrites["inject_Variable_def","project_Variable_def","inject_SetOfVariables_def","project_SetOfVariables_def","inject_Term_def","project_Term_def","inject_Multiequation_def","project_Multiequation_def","inject_TempMultiequation_def","project_TempMultiequation_def","inject_System_def","project_System_def","inject_AuxList_def","project_AuxList_def","inject_List_def","project_List_def"];
 
 val is_embed_def = Define`
-  is_embed emb = ∀a. emb.project (emb.inject a) = SOME a`;
+  is_embed emb = ∀a v. (emb.inject a = v) ⇔ (emb.project v = SOME a)`;
 local
-  fun Cases_on_rhs (g as (asl,tm)) = let
-    val (_,rhs) = dest_eq tm
-    val var = if is_var rhs then rhs else snd (dest_comb rhs)
-  in Cases_on [QUOTE (term_to_string var)] end g
-  val tac = srw_tac [][is_embed_def] >> rpt (Cases_on_rhs >> srw_tac [][])
+  fun Cases_on_if p (g as (asl,tm)) = let
+    val tm = find_term p tm handle HOL_ERR _ =>
+             Lib.tryfind (find_term p) asl
+  in Cases_on [QUOTE (term_to_string tm)] end g
+  fun is_var' v = let
+    val (_,ty) = dest_var v
+    val (tyname,_) = dest_type ty
+  in
+    not (Lib.mem tyname ["num","list"])
+  end handle HOL_ERR _ => false | Bind => false
+  val tac = srw_tac [][EQ_IMP_THM,is_embed_def] >> rpt (Cases_on_if is_var' >> fsrw_tac [][])
 in
   val is_embed_Variable = Q.store_thm("is_embed_Variable", `is_embed embed_Variable`, tac);
   val is_embed_SetOfVariables = Q.store_thm("is_embed_SetOfVariables", `is_embed embed_SetOfVariables`, tac);
@@ -383,7 +389,7 @@ val lookup_assign = Q.store_thm(
 `is_embed emb ⇒
  ∀ptr v s s'. (raw_assign emb ptr v s = ((), s')) ⇒ (raw_lookup emb ptr s' = (SOME v, s'))`,
 srw_tac [][] >> Cases_on `ptr` >>
-fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
+fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM] >> PROVE_TAC []);
 
 (* only true for "well-formed" stores that don't bind 0. But maybe lookup should have this property for all stores anyway?
 val lookup_pnil = Q.store_thm(
