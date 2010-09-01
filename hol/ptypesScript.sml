@@ -52,7 +52,7 @@ type = Variable_type
      | List_type of type`;
 
 val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
-  ((FLOOKUP s n = NONE) ⇒ has_type s n t) ∧
+  (0 ∉ FDOM s ⇒ has_type s 0 t) ∧
   ((FLOOKUP s n = SOME (Variable_value _ m)) ∧ has_type s m Multiequation_type ⇒
    has_type s n Variable_type) ∧
   ((FLOOKUP s n = SOME (SetOfVariables_value _ _ m)) ∧ has_type s m (List_type Variable_type) ⇒
