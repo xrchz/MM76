@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax lcsymtacs
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax combinTheory lcsymtacs
 
 val _ = new_theory "ptypes"
 
@@ -39,8 +39,6 @@ value = Variable_value of varname => num
 
 val _ = type_abbrev("store", ``:num |-> value``);
 
-val _ = Hol_datatype `state = <| store : store |>`;
-
 val _ = Hol_datatype `
 type = Variable_type
      | SetOfVariables_type
@@ -50,6 +48,8 @@ type = Variable_type
      | System_type
      | AuxList_type of type
      | List_type of type`;
+
+val _ = Hol_datatype `state = <| store : store ; cell_type : num -> type |>`;
 
 val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
   (0 ∉ FDOM s ⇒ has_type s 0 t) ∧
@@ -71,6 +71,9 @@ val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
    has_type s n (List_type type)) ∧
   ((FLOOKUP s n = SOME (AuxList_value m1 m2)) ∧ has_type s m1 type ∧ has_type s m2 (AuxList_type type) ⇒
    has_type s n (AuxList_type type))`;
+
+val typed_state_def = Define`
+   typed_state s = ∀n. n ∈ FDOM s.store ⇒ has_type s.store n (s.cell_type n)`;
 
 val _ = type_abbrev("inject", ``:'a -> value``);
 val _ = type_abbrev("project", ``:value -> 'a option``);
@@ -142,12 +145,16 @@ in
   val is_embed_Multiequation = Q.store_thm("is_embed_Multiequation", `is_embed embed_Multiequation`, tac);
   val is_embed_TempMultiequation = Q.store_thm("is_embed_TempMultiequation", `is_embed embed_TempMultiequation`, tac);
   val is_embed_System = Q.store_thm("is_embed_System", `is_embed embed_System`, tac);
-  val is_embed_AuxList = Q.store_thm("is_embed_AuxList", `is_embed emb ⇒ is_embed (embed_AuxList emb)`, tac);
-  val is_embed_List = Q.store_thm("is_embed_List", `is_embed emb ⇒ is_embed (embed_List emb)`, tac);
+  val is_embed_AuxList = Q.store_thm("is_embed_AuxList", `is_embed (embed_AuxList emb)`, tac);
+  val is_embed_List = Q.store_thm("is_embed_List", `is_embed (embed_List emb)`, tac);
 end
 
 val raw_lookup_def = Define`
-  raw_lookup (emb:'a embed) (addr _ n : 'a ptr) = OPTIONT_BIND (λs. (FLOOKUP s.store n, s)) (λv. UNIT (emb.project v))`;
+  raw_lookup (emb:'a embed) (addr _ n : 'a ptr) =
+  do v <- (λs. (FLOOKUP s.store n, s)) ;
+     t <- (λs. (SOME (s.cell_type n), s)) ;
+     if t = emb.type then return (emb.project v) else OPTIONT_FAIL
+  od`;
 val _ = overload_on("lookup", ``λp:Variable ptr. raw_lookup embed_Variable p``);
 val _ = overload_on("lookup", ``λp:SetOfVariables ptr. raw_lookup embed_SetOfVariables p``);
 val _ = overload_on("lookup", ``λp:Term ptr. raw_lookup embed_Term p``);
@@ -158,7 +165,9 @@ val _ = overload_on("lookup", ``λemb. raw_lookup (embed_AuxList emb)``);
 val _ = overload_on("lookup", ``λemb. raw_lookup (embed_List emb)``);
 
 val raw_assign_def = Define`
-  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v = λs. ((), s with store updated_by (n =+ (emb.inject v)))`;
+  raw_assign (emb:'a embed) (addr _ n : 'a ptr) v =
+  λs. ((), s with <| store updated_by (n =+ (emb.inject v)) ;
+                     cell_type updated_by (n =+ emb.type) |>)`;
 val _ = overload_on("assign", ``λp:Variable ptr. raw_assign embed_Variable p``);
 val _ = overload_on("assign", ``λp:SetOfVariables ptr. raw_assign embed_SetOfVariables p``);
 val _ = overload_on("assign", ``λp:Term ptr. raw_assign embed_Term p``);
@@ -323,12 +332,13 @@ val CreateList_creates_empty = Q.store_thm(
 simp_tac (srw_ss()) [CreateList_def,raw_new_def] >>
 free_addr_elim_tac >> srw_tac [][UNCURRY] >>
 free_addr_elim_tac >>
-srw_tac [][Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE]);
+srw_tac [][Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
 
 val lookup_preserves_store = Q.store_thm(
 "lookup_preserves_store",
 `SND (raw_lookup emb ptr s) = s`,
-Cases_on `emb` >> Cases_on `ptr` >> srw_tac [][FLOOKUP_DEF]);
+Cases_on `emb` >> Cases_on `ptr` >>
+srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
 
 val HeadOfList_preserves_store = Q.store_thm(
 "HeadOfList_preserves_store",
@@ -364,16 +374,16 @@ Cases_on `p` >> srw_tac [][]);
 val lookup_dispose = Q.store_thm(
 "lookup_dispose",
 `raw_lookup emb p2 (SND (dispose p1 s)) = (if ptr_to_num p1 = ptr_to_num p2 then NONE else (FST (raw_lookup emb p2 s)), (SND (dispose p1 s)))`,
-Cases_on `p1` >> Cases_on `p2` >> Cases_on `emb` >> srw_tac [][] >>
+Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
 fsrw_tac [][DOMSUB_FLOOKUP_THM] >>
-srw_tac [][FLOOKUP_DEF]);
+srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
 
 val lookup_assign = Q.store_thm(
 "lookup_assign",
 `is_embed emb ⇒
  ∀ptr v s s'. (raw_assign emb ptr v s = ((), s')) ⇒ (raw_lookup emb ptr s' = (SOME v, s'))`,
-srw_tac [][] >> Cases_on `ptr` >> Cases_on `emb` >>
-fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE]);
+srw_tac [][] >> Cases_on `ptr` >>
+fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
 
 (* only true for "well-formed" stores that don't bind 0. But maybe lookup should have this property for all stores anyway?
 val lookup_pnil = Q.store_thm(
