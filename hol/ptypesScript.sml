@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax combinTheory lcsymtacs
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax combinTheory lcsymtacs relationTheory
 
 val _ = new_theory "ptypes"
 
@@ -344,41 +344,49 @@ free_addr_elim_tac >> srw_tac [][UNCURRY] >>
 free_addr_elim_tac >>
 srw_tac [][list_of_List_def,Once list_of_AuxList_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
 
-val lookup_preserves_store = Q.store_thm(
-"lookup_preserves_store",
+val lookup_state = Q.store_thm(
+"lookup_state",
 `SND (raw_lookup emb ptr s) = s`,
 Cases_on `emb` >> Cases_on `ptr` >>
 srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
+val _ = export_rewrites["lookup_state"];
 
-val HeadOfList_preserves_store = Q.store_thm(
-"HeadOfList_preserves_store",
+val HeadOfList_state = Q.store_thm(
+"HeadOfList_state",
 `SND (HeadOfList emb l s) = s`,
-`SND (lookup emb l s) = s` by MATCH_ACCEPT_TAC lookup_preserves_store >>
-srw_tac [][HeadOfList_def,lookup_preserves_store,UNCURRY] >>
+`SND (lookup emb l s) = s` by MATCH_ACCEPT_TAC lookup_state >>
+srw_tac [][HeadOfList_def,lookup_state,UNCURRY] >>
 Cases_on `FST (lookup emb l s)` >> srw_tac [][] >>
-`SND (lookup emb x.first s) = s` by MATCH_ACCEPT_TAC lookup_preserves_store >>
+`SND (lookup emb x.first s) = s` by MATCH_ACCEPT_TAC lookup_state >>
 srw_tac [][UNCURRY] >>
 Cases_on `FST (lookup emb x.first s)` >> srw_tac [][]);
+val _ = export_rewrites["HeadOfList_state"];
 
-val TailOfList_preserves_store = Q.store_thm(
-"TailOfList_preserves_store",
+val TailOfList_store = Q.store_thm(
+"TailOfList_store",
 `(lookup emb l s = (SOME l', s')) ⇒ ((SND (TailOfList emb l s)).store \\ (ptr_to_num l) \\ (ptr_to_num l'.first) = s.store \\ (ptr_to_num l) \\ (ptr_to_num l'.first))`,
 srw_tac [][TailOfList_def,UNCURRY] >>
-`s' = s` by PROVE_TAC [lookup_preserves_store,SND] >>
-`SND (lookup emb l'.first s) = s` by PROVE_TAC [lookup_preserves_store,SND] >>
+`s' = s` by PROVE_TAC [lookup_state,SND] >>
+`SND (lookup emb l'.first s) = s` by PROVE_TAC [lookup_state,SND] >>
 Cases_on `FST (lookup emb l'.first s)` >> srw_tac [][] >>
 Cases_on `l` >> Cases_on `l'.first` >>
 srw_tac [][DOMSUB_COMMUTES]);
 
-val EmptyList_preserves_store = Q.store_thm(
-"EmptyList_preserves_store",
+val EmptyList_state = Q.store_thm(
+"EmptyList_state",
 `SND (EmptyList emb l s) = s`,
-srw_tac [][EmptyList_def,lookup_preserves_store,UNCURRY] >>
+srw_tac [][EmptyList_def,lookup_state,UNCURRY] >>
 Cases_on `FST (lookup emb l s) ` >> srw_tac [][]);
+val _ = export_rewrites["EmptyList_state"];
 
-val dispose_preserves_store = Q.store_thm(
-"dispose_preserves_store",
+val dispose_store = Q.store_thm(
+"dispose_store",
 `s.store \\ ptr_to_num p = (SND (dispose p s)).store \\ ptr_to_num p`,
+Cases_on `p` >> srw_tac [][]);
+
+val dispose_cell_type = Q.store_thm(
+"dispose_cell_type",
+`(SND (dispose p s)).cell_type = s.cell_type`,
 Cases_on `p` >> srw_tac [][]);
 
 val lookup_dispose = Q.store_thm(
@@ -388,31 +396,88 @@ Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
 fsrw_tac [][DOMSUB_FLOOKUP_THM] >>
 srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
 
+val lookup_fails = Q.store_thm(
+"lookup_fails",
+`(FST (raw_lookup emb p s) = NONE) ⇔ (∀v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ⇒ (s.cell_type (ptr_to_num p) = emb.type) ⇒ (emb.project v = NONE))`,
+Cases_on `p` >> srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
+
+val lookup_succeeds = Q.store_thm(
+"lookup_succeeds",
+`(FST (raw_lookup emb p s) = SOME a) ⇔ ∃v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ∧ (s.cell_type (ptr_to_num p) = emb.type) ∧ (emb.project v = SOME a)`,
+Cases_on `FST (raw_lookup emb p s)` >- (
+  PROVE_TAC [lookup_fails,NOT_SOME_NONE] ) >>
+Cases_on `FLOOKUP s.store (ptr_to_num p)` >>
+Cases_on `p` >> fsrw_tac [][] >>
+Cases_on `s.cell_type n = emb.type` >> fsrw_tac [][]);
+
 val lookup_assign = Q.store_thm(
 "lookup_assign",
-`is_embed emb ⇒
- ∀ptr v s s'. (raw_assign emb ptr v s = ((), s')) ⇒ (raw_lookup emb ptr s' = (SOME v, s'))`,
-srw_tac [][] >> Cases_on `ptr` >>
-fsrw_tac [][is_embed_def] >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM] >> PROVE_TAC []);
+`is_embed emb ⇒ (FST (raw_lookup emb p (SND (raw_assign emb p a s))) = SOME a)`,
+Cases_on `p` >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,is_embed_def] >> PROVE_TAC []);
 
-(* only true for "well-formed" stores that don't bind 0. But maybe lookup should have this property for all stores anyway?
-val lookup_pnil = Q.store_thm(
-"lookup_pnil",
-`lookup pnil s = (NONE, s)`,
+val assign_store = Q.store_thm(
+"assign_store",
+`(SND (raw_assign emb p v s)).store \\ ptr_to_num p = s.store \\ ptr_to_num p`,
+Cases_on `p` >> srw_tac [][]);
+
+val assign_cell_type = Q.store_thm(
+"assign_cell_type",
+`(SND (raw_assign emb p v s)).cell_type  = ((ptr_to_num p) =+ emb.type) s.cell_type`,
+Cases_on `p` >> srw_tac [][]);
+
+val lookup_unbound = Q.store_thm(
+"lookup_unbound",
+`ptr_to_num p ∉ FDOM s.store ⇒ (lookup p s = (NONE, s))`,
+Cases_on `p` >> srw_tac [][FLOOKUP_DEF]);
+
+val HeadOfList_unbound = Q.store_thm(
+"HeadOfList_unbound",
+`ptr_to_num p ∉ FDOM s.store ⇒ (HeadOfList emb p s = (NONE, s))`,
+Cases_on `p` >> srw_tac [][FLOOKUP_DEF,HeadOfList_def]);
+
+val TailOfList_unbound = Q.store_thm(
+"TailOfList_unbound",
+`ptr_to_num p ∉ FDOM s.store ⇒ (TailOfList emb p s = (NONE, s))`,
+Cases_on `p` >> srw_tac [][FLOOKUP_DEF,TailOfList_def]);
+
+val type_inductive = Q.store_thm(
+"type_inductive",
+`∀t. t ≠ List_type t ∧ t ≠ AuxList_type t`,
+Induct >> srw_tac [][]);
+
+val has_type_bound = Q.store_thm(
+"has_type_bound",
+`has_type s n t ⇒ n ≠ 0 ⇒ n ∈ FDOM s`,
+srw_tac [][Once has_type_cases,FLOOKUP_DEF] >> srw_tac [][]);
+
+val assign_comm = Q.store_thm(
+"assign_comm",
+`ptr_to_num p1 ≠ ptr_to_num p2 ⇒
+ (SND (raw_assign emb1 p1 v1 (SND (raw_assign emb2 p2 v2 s))) =
+  SND (raw_assign emb2 p2 v2 (SND (raw_assign emb1 p1 v1 s))))`,
+Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
+srw_tac [][theorem "state_component_equality",FUN_EQ_THM,APPLY_UPDATE_THM] >>
+srw_tac [][GSYM fmap_EQ,pred_setTheory.INSERT_COMM] >>
+srw_tac [][FUN_EQ_THM,FAPPLY_FUPDATE_THM] >>
 srw_tac [][]);
-val _ = export_rewrites ["lookup_pnil"];
 
-val HeadOfList_pnil = Q.store_thm(
-"HeadOfList_pnil",
-`HeadOfList (pnil a) s = (NONE, s)`,
-srw_tac [][HeadOfList_def,OPTIONT_BIND_def,UNIT_DEF,BIND_DEF]);
-val _ = export_rewrites["HeadOfList_pnil"];
+val free_addr_state = Q.store_thm(
+"free_addr_state",
+`SND (free_addr s) = s`,
+srw_tac [][free_addr_def]);
+val _ = export_rewrites["free_addr_state"];
 
-val TailOfList_pnil = Q.store_thm(
-"TailOfList_pnil",
-`TailOfList (pnil a) s = (NONE, s)`,
-srw_tac [][TailOfList_def,OPTIONT_BIND_def,BIND_DEF,UNIT_DEF]);
-val _ = export_rewrites["TailOfList_pnil"];
-*)
+val lookup_assign_neq = Q.store_thm(
+"lookup_assign_neq",
+`ptr_to_num p1 ≠ ptr_to_num p2 ⇒
+ (FST (raw_lookup emb1 p1 (SND (raw_assign emb2 p2 v s))) = FST (raw_lookup emb1 p1 s))`,
+Cases_on `FST (raw_lookup emb1 p1 s)` >>
+Cases_on `p2` >> fsrw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,lookup_succeeds,lookup_fails]);
+
+val ptr_equality = Q.store_thm(
+"ptr_equality",
+`(ptr_to_num p1 = ptr_to_num p2) ⇔ (p1 = p2)`,
+Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
+PROVE_TAC [ITSELF_UNIQUE]);
 
 val _ = export_theory ()
