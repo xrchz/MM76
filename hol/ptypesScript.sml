@@ -292,16 +292,19 @@ val _ = overload_on("AppendListsOfMulteq", ``AppendLists embed_Multiequation``);
 val _ = overload_on("AppendListsOfTempMulteq", ``AppendLists embed_TempMultiequation``);
 val _ = overload_on("AppendListsOfVariables", ``AppendLists embed_Variable``);
 
-val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
-  ((EmptyList emb ptr s = (SOME T, s)) ⇒ corresponding_list emb ptr s []) ∧
-  ((EmptyList emb ptr s = (SOME F, s)) ∧
-   ((do hd <- HeadOfList emb ptr ;
-        tl <- TailOfList emb ptr ;
-        (hd':'a) <- raw_lookup emb hd ;
-        return (hd',tl)
-     od) s = (SOME (hd',tl),s')) ∧
-   corresponding_list emb tl s' tl' ⇒
-   corresponding_list emb ptr s (hd'::tl'))`;
+val (list_of_AuxList_rules, list_of_AuxList_ind, list_of_AuxList_cases) = Hol_reln`
+  (list_of_AuxList emb s last last []) ∧
+  (al ≠ last ∧
+   (FST ((do al' <- lookup emb al ;
+             (hd':'a) <- raw_lookup emb al'.head ;
+             return (hd',al'.tail)
+          od) s) =
+    SOME (hd',tl)) ∧
+   list_of_AuxList emb s last tl tl' ⇒
+   list_of_AuxList emb s last al (hd'::tl'))`;
+
+val list_of_List_def = Define`
+  list_of_List emb s l al' = ∃l'. (FST (lookup emb l s) = SOME l') ∧ list_of_AuxList emb s l'.last l'.first al'`;
 
 val NOTIN_INFINITE_FDOM_exists = Q.store_thm(
 "NOTIN_INFINITE_FDOM_exists",
@@ -333,13 +336,13 @@ end g
 
 val _ = augment_srw_ss [rewrites [BIND_DEF,IGNORE_BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,OPTIONT_FAIL_def,OPTIONT_UNIT_def]]
 
-val CreateList_creates_empty = Q.store_thm(
-"CreateList_creates_empty",
-`(CreateList emb s0 = (ptr, s)) ⇒ corresponding_list emb ptr s []`,
+val CreateList_empty = Q.store_thm(
+"CreateList_empty",
+`(CreateList emb s0 = (l, s)) ⇒ list_of_List emb s l []`,
 simp_tac (srw_ss()) [CreateList_def,raw_new_def] >>
 free_addr_elim_tac >> srw_tac [][UNCURRY] >>
 free_addr_elim_tac >>
-srw_tac [][Once corresponding_list_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
+srw_tac [][list_of_List_def,Once list_of_AuxList_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
 
 val lookup_preserves_store = Q.store_thm(
 "lookup_preserves_store",
