@@ -293,8 +293,9 @@ val _ = overload_on("AppendListsOfTempMulteq", ``AppendLists embed_TempMultiequa
 val _ = overload_on("AppendListsOfVariables", ``AppendLists embed_Variable``);
 
 val (corresponding_list_rules, corresponding_list_ind, corresponding_list_cases) = Hol_reln`
-  (((EmptyList emb ptr) s = (SOME T, s')) ⇒ corresponding_list emb ptr s []) ∧
-  (((do hd <- HeadOfList emb ptr ;
+  ((EmptyList emb ptr s = (SOME T, s)) ⇒ corresponding_list emb ptr s []) ∧
+  ((EmptyList emb ptr s = (SOME F, s)) ∧
+   ((do hd <- HeadOfList emb ptr ;
         tl <- TailOfList emb ptr ;
         (hd':'a) <- raw_lookup emb hd ;
         return (hd',tl)
