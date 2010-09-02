@@ -65,7 +65,7 @@ val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
    has_type s n Multiequation_type) ∧
   ((FLOOKUP s n = SOME (TempMultiequation_value m1 m2)) ∧ has_type s m1 (List_type Term_type) ∧ has_type s m2 (List_type Term_type) ⇒
    has_type s n TempMultiequation_type) ∧
-  ((FLOOKUP s n = SOME (System_value m1 m2)) ∧ has_types s m1 (List_type Multiequation_type) ∧ has_type s m2 (List_type Multiequation_type) ⇒
+  ((FLOOKUP s n = SOME (System_value m1 m2)) ∧ has_type s m1 (List_type Multiequation_type) ∧ has_type s m2 (List_type Multiequation_type) ⇒
    has_type s n System_type) ∧
   ((FLOOKUP s n = SOME (List_value m1 m2)) ∧ has_type s m1 (AuxList_type type) ∧ has_type s m2 (AuxList_type type) ⇒
    has_type s n (List_type type)) ∧
