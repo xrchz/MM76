@@ -52,28 +52,34 @@ type = Variable_type
 val _ = Hol_datatype `state = <| store : store ; cell_type : num -> type |>`;
 
 val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
-  (0 ∉ FDOM s ⇒ has_type s 0 t) ∧
-  ((FLOOKUP s n = SOME (Variable_value _ m)) ∧ has_type s m Multiequation_type ⇒
-   has_type s n Variable_type) ∧
-  ((FLOOKUP s n = SOME (SetOfVariables_value _ _ m)) ∧ has_type s m (List_type Variable_type) ⇒
-   has_type s n SetOfVariables_type) ∧
-  ((FLOOKUP s n = SOME (Term_value (INL m))) ∧ has_type s m Variable_type ⇒
-   has_type s n Term_type) ∧
-  ((FLOOKUP s n = SOME (Term_value (INR (_,m)))) ∧ has_type s m (List_type Term_type) ⇒
-   has_type s n Term_type) ∧
-  ((FLOOKUP s n = SOME (Multiequation_value _ m1 m2)) ∧ has_type s m1 SetOfVariables_type ∧ has_type s m2 (List_type Term_type) ⇒
-   has_type s n Multiequation_type) ∧
-  ((FLOOKUP s n = SOME (TempMultiequation_value m1 m2)) ∧ has_type s m1 (List_type Term_type) ∧ has_type s m2 (List_type Term_type) ⇒
-   has_type s n TempMultiequation_type) ∧
-  ((FLOOKUP s n = SOME (System_value m1 m2)) ∧ has_type s m1 (List_type Multiequation_type) ∧ has_type s m2 (List_type Multiequation_type) ⇒
-   has_type s n System_type) ∧
-  ((FLOOKUP s n = SOME (List_value m1 m2)) ∧ has_type s m1 (AuxList_type type) ∧ has_type s m2 (AuxList_type type) ⇒
-   has_type s n (List_type type)) ∧
-  ((FLOOKUP s n = SOME (AuxList_value m1 m2)) ∧ has_type s m1 type ∧ has_type s m2 (AuxList_type type) ⇒
-   has_type s n (AuxList_type type))`;
+  (cell_has_type s m Multiequation_type ⇒
+   has_type s (Variable_value _ m) Variable_type) ∧
+  (cell_has_type s m (List_type Variable_type) ⇒
+   has_type s (SetOfVariables_value _ _ m) SetOfVariables_type) ∧
+  (cell_has_type s m Variable_type ⇒
+   has_type s (Term_value (INL m)) Term_type) ∧
+  (cell_has_type s m (List_type Term_type) ⇒
+   has_type s (Term_value (INR (_,m))) Term_type) ∧
+  (cell_has_type s m1 SetOfVariables_type ∧
+   cell_has_type s m2 (List_type Term_type) ⇒
+   has_type s (Multiequation_value _ m1 m2) Multiequation_type) ∧
+  (cell_has_type s m1 (List_type Term_type) ∧
+   cell_has_type s m2 (List_type Term_type) ⇒
+   has_type s (TempMultiequation_value m1 m2) TempMultiequation_type) ∧
+  (cell_has_type s m1 (List_type Multiequation_type) ∧
+   cell_has_type s m2 (List_type Multiequation_type) ⇒
+   has_type s (System_value m1 m2) System_type) ∧
+  (cell_has_type s m1 (AuxList_type type) ∧
+   cell_has_type s m2 (AuxList_type type) ⇒
+   has_type s (List_value m1 m2) (List_type type)) ∧
+  (cell_has_type s m1 type ∧
+   cell_has_type s m2 (AuxList_type type) ⇒
+   has_type s (AuxList_value m1 m2) (AuxList_type type)) ∧
+  (0 ∉ FDOM s ⇒ cell_has_type s 0 t) ∧
+  ((FLOOKUP s n = SOME v) ∧ has_type s v t ⇒ cell_has_type s n t)`;
 
 val typed_state_def = Define`
-   typed_state s = ∀n. n ∈ FDOM s.store ⇒ has_type s.store n (s.cell_type n)`;
+   typed_state s = ∀n. n ∈ FDOM s.store ⇒ cell_has_type s.store n (s.cell_type n)`;
 
 val _ = type_abbrev("inject", ``:'a -> value``);
 val _ = type_abbrev("project", ``:value -> 'a option``);
@@ -445,9 +451,9 @@ val type_inductive = Q.store_thm(
 `∀t. t ≠ List_type t ∧ t ≠ AuxList_type t`,
 Induct >> srw_tac [][]);
 
-val has_type_bound = Q.store_thm(
-"has_type_bound",
-`has_type s n t ⇒ n ≠ 0 ⇒ n ∈ FDOM s`,
+val cell_has_type_bound = Q.store_thm(
+"cell_has_type_bound",
+`cell_has_type s n t ⇒ n ≠ 0 ⇒ n ∈ FDOM s`,
 srw_tac [][Once has_type_cases,FLOOKUP_DEF] >> srw_tac [][]);
 
 val assign_comm = Q.store_thm(
