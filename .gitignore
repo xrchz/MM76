@@ -1,0 +1,14 @@
+*.aux
+*.bbl
+*.blg
+*.d
+*.fls
+*.log
+*.make
+*.pdf
+.HOLMK
+*.sig
+*Theory.sml
+*.ui
+*.uo
+dump
