@@ -486,4 +486,27 @@ val ptr_equality = Q.store_thm(
 Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
 PROVE_TAC [ITSELF_UNIQUE]);
 
+val (reach1_rules, reach1_ind, reach1_cases) = Hol_reln`
+  (reach1 m (Variable_value _ m)) ∧
+  (reach1 m (SetOfVariables_value _ _ m)) ∧
+  (reach1 m (Term_value (INL m))) ∧
+  (reach1 m (Term_value (INR (_,m)))) ∧
+  (reach1 m (Multiequation_value _ m _)) ∧
+  (reach1 m (Multiequation_value _ _ m)) ∧
+  (reach1 m (TempMultiequation_value m _)) ∧
+  (reach1 m (TempMultiequation_value _ m)) ∧
+  (reach1 m (System_value m _)) ∧
+  (reach1 m (System_value _ m)) ∧
+  (reach1 m (List_value m _)) ∧
+  (reach1 m (List_value _ m)) ∧
+  (reach1 m (AuxList_value m _)) ∧
+  (reach1 m (AuxList_value _ m))`;
+
+val cell_reach1_def = Define`
+  cell_reach1 (s:store) m n = ∃v. (FLOOKUP s n = SOME v) ∧ reach1 m v`;
+val _ = overload_on("cell_reach",``λs. RTC (cell_reach1 s)``);
+
+val reach_def = Define`
+  reach s m v = ∃n. reach1 n v ∧ cell_reach s m n`;
+
 val _ = export_theory ()
