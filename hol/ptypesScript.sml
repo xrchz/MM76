@@ -671,4 +671,24 @@ srw_tac [][reach_def,reach1_cases] >>
 srw_tac [][reach_def,reach1_cases] >>
 fsrw_tac [][typed_state_def]);
 
+val cell_reach_typed_state_unbound_eq_0 = Q.store_thm(
+"cell_reach_typed_state_unbound_eq_0",
+`typed_state s ∧ cell_reach s.store m n ∧ m ≠ n ∧ m ∉ FDOM s.store ⇒ (m = 0)`,
+REWRITE_TAC [GSYM AND_IMP_INTRO] >>
+strip_tac >>
+map_every qid_spec_tac [`n`,`m`] >>
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][] >>
+fsrw_tac [][cell_reach1_def] >>
+qmatch_assum_rename_tac `FLOOKUP s.store p = SOME v` [] >>
+`p ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+Cases_on `m = n` >> srw_tac [][] >>
+imp_res_tac typed_state_def >>
+fsrw_tac [][Once has_type_cases] >>
+fsrw_tac [][] >> srw_tac [][] >>
+fsrw_tac [][reach1_cases] >> srw_tac [][] >>
+fsrw_tac [][Once has_type_cases] >>
+fsrw_tac [][Once has_type_cases] >>
+fsrw_tac [][FLOOKUP_DEF] );
+
 val _ = export_theory ()
