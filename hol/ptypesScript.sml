@@ -509,4 +509,41 @@ val _ = overload_on("cell_reach",``λs. RTC (cell_reach1 s)``);
 val reach_def = Define`
   reach s m v = ∃n. reach1 n v ∧ cell_reach s m n`;
 
+val cell_reach_FUPDATE_end = Q.store_thm(
+"cell_reach_FUPDATE_end",
+`cell_reach (s |+ (m,w)) m n ⇔ cell_reach s m n`,
+reverse EQ_TAC >- (
+  map_every qid_spec_tac [`n`,`m`] >>
+  ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+  srw_tac [][cell_reach1_def] >>
+  qmatch_assum_rename_tac `FLOOKUP s p = SOME v` [] >>
+  Cases_on `m = p` >- PROVE_TAC [RTC_REFL] >>
+  `FLOOKUP (s |+ (m,w)) p = SOME v` by PROVE_TAC [FLOOKUP_UPDATE] >>
+  PROVE_TAC [cell_reach1_def,RTC_RULES_RIGHT1] ) >>
+qsuff_tac `!s0 s m n. cell_reach s m n ⇒ (s = s0 |+ (m,w)) ⇒ cell_reach s0 m n`
+>- srw_tac [][] >>
+ntac 2 gen_tac >>
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][cell_reach1_def] >>
+qmatch_assum_rename_tac `FLOOKUP (s0 |+ (m,w)) p = SOME v` [] >>
+Cases_on `m=p` >- PROVE_TAC [RTC_REFL] >>
+`FLOOKUP s0 p = SOME v` by PROVE_TAC [FLOOKUP_UPDATE] >>
+PROVE_TAC [cell_reach1_def,RTC_RULES_RIGHT1]);
+
+val reach_FUPDATE_end = Q.store_thm(
+"reach_FUPDATE_end",
+`reach (s |+ (m,w)) m v ⇔ reach s m v`,
+srw_tac [][reach_def,cell_reach_FUPDATE_end]);
+
+val cell_reach_bound = Q.store_thm(
+"cell_reach_bound",
+`cell_reach s m n ∧ n ≠ m ⇒ n ∈ FDOM s`,
+srw_tac [][Once RTC_CASES2,cell_reach1_def,FLOOKUP_DEF]);
+
+val FLOOKUP_reach_imp_cell_reach = Q.store_thm(
+"FLOOKUP_reach_imp_cell_reach",
+`(FLOOKUP s n = SOME v) ∧ reach s m v ⇒ cell_reach s m n`,
+srw_tac [][reach_def] >>
+srw_tac [SATISFY_ss][Once RTC_CASES2,cell_reach1_def]);
+
 val _ = export_theory ()
