@@ -546,4 +546,46 @@ val FLOOKUP_reach_imp_cell_reach = Q.store_thm(
 srw_tac [][reach_def] >>
 srw_tac [SATISFY_ss][Once RTC_CASES2,cell_reach1_def]);
 
+val has_type_assign_unreachable = Q.store_thm(
+"has_type_assign_unreachable",
+`(∀v t. has_type s v t ⇒ ¬ reach s m v ⇒ has_type (s |+ (m,w)) v t) ∧
+ (∀n t. cell_has_type s n t ⇒ ¬ cell_reach s m n ⇒ cell_has_type (s |+ (m,w)) n t)`,
+ho_match_mp_tac has_type_ind >>
+reverse (srw_tac [][]) >- (
+  srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
+  PROVE_TAC [RTC_REFL,FLOOKUP_reach_imp_cell_reach] )
+>- (
+  srw_tac [][Once has_type_cases] >>
+  PROVE_TAC [RTC_REFL] ) >>
+fsrw_tac [][reach_def,reach1_cases] >>
+srw_tac [][Once has_type_cases] >>
+first_x_assum match_mp_tac >>
+PROVE_TAC []);
+
+val has_type_remove_unreachable = Q.store_thm(
+"has_type_remove_unreachable",
+`(∀v t. has_type s v t ⇒ ¬ reach s m v ⇒ has_type (s \\ m) v t) ∧
+ (∀n t. cell_has_type s n t ⇒ ¬ cell_reach s m n ⇒ cell_has_type (s \\ m) n t)`,
+ho_match_mp_tac has_type_ind >>
+reverse (srw_tac [][]) >- (
+  srw_tac [][Once has_type_cases,DOMSUB_FLOOKUP_THM] >>
+  PROVE_TAC [RTC_REFL,FLOOKUP_reach_imp_cell_reach] ) >>
+srw_tac [][Once has_type_cases] >>
+fsrw_tac [][reach_def,reach1_cases] >>
+PROVE_TAC []);
+
+val has_type_assign = Q.store_thm(
+"has_type_assign",
+`(∀v t. has_type s v t ⇒ m ≠ 0 ∧ (∀t. cell_has_type s m t ⇒ has_type s w t) ∧ ¬reach s m w ⇒ has_type (s |+ (m,w)) v t) ∧
+ (∀n t. cell_has_type s n t ⇒ m ≠ 0 ∧ (∀t. cell_has_type s m t ⇒ has_type s w t) ∧ ¬reach s m w ⇒ cell_has_type (s |+ (m,w)) n t)`,
+ho_match_mp_tac (theorem "has_type_strongind") >>
+reverse (srw_tac [][]) >- (
+  fsrw_tac [][] >>
+  srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
+  srw_tac [][] >>
+  `cell_has_type s m t` by srw_tac [][Once has_type_cases] >>
+  PROVE_TAC [has_type_assign_unreachable] )
+>- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
+srw_tac [][Once has_type_cases]);
+
 val _ = export_theory ()
