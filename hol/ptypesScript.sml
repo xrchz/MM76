@@ -428,8 +428,9 @@ Cases_on `p` >> srw_tac [][]);
 
 val assign_cell_type = Q.store_thm(
 "assign_cell_type",
-`(SND (raw_assign emb p v s)).cell_type  = ((ptr_to_num p) =+ emb.type) s.cell_type`,
+`(SND (raw_assign emb p v s)).cell_type = ((ptr_to_num p) =+ emb.type) s.cell_type`,
 Cases_on `p` >> srw_tac [][]);
+val _ = export_rewrites["assign_cell_type"];
 
 val lookup_unbound = Q.store_thm(
 "lookup_unbound",
@@ -587,5 +588,55 @@ reverse (srw_tac [][]) >- (
   PROVE_TAC [has_type_assign_unreachable] )
 >- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
 srw_tac [][Once has_type_cases]);
+
+val assign_FDOM = Q.store_thm(
+"assign_FDOM",
+`FDOM (SND (raw_assign emb p v s)).store = (ptr_to_num p) INSERT (FDOM s.store)`,
+Cases_on `p` >> srw_tac [][]);
+val _ = export_rewrites["assign_FDOM"];
+
+val wfstate_def = Define`
+  wfstate s = typed_state s ∧ 0 ∉ FDOM s.store`;
+
+val free_addr_neq_0 = Q.store_thm(
+"free_addr_neq_0",
+`ptr_to_num (FST (free_addr s)) ≠ 0`,
+free_addr_elim_tac >> srw_tac [][]);
+val _ = export_rewrites["free_addr_neq_0"];
+
+val CreateList_wfstate = Q.store_thm(
+"CreateList_wfstate",
+`wfstate s ⇒ wfstate (SND (CreateList emb s))`,
+srw_tac [][CreateList_def,UNCURRY,wfstate_def] >>
+free_addr_elim_tac >>
+qx_gen_tac `f1` >>
+fsrw_tac [][] >>
+free_addr_elim_tac >>
+qx_gen_tac `f2` >>
+fsrw_tac [][] >>
+strip_tac >>
+strip_tac >>
+srw_tac [][typed_state_def,APPLY_UPDATE_THM] >- (
+  ntac 5 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE]) )
+>- (
+  ntac 3 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE]) ) >>
+`f1 ≠ n ∧ f2 ≠ n` by PROVE_TAC [] >>
+srw_tac [][] >>
+(has_type_assign |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
+srw_tac [][reach_def,reach1_cases] >- (
+  (has_type_assign |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
+  srw_tac [][reach_def,reach1_cases] >-
+    fsrw_tac [][typed_state_def]
+  >- (
+    fsrw_tac [][Once has_type_cases] >>
+    srw_tac [][] >> fsrw_tac [][FLOOKUP_DEF] ) >>
+  PROVE_TAC [cell_reach_bound] )
+>- (
+  fsrw_tac [][Once has_type_cases] >- (
+    srw_tac [][] ) >>
+  qpat_assum `FLOOKUP X Z = Y` mp_tac >>
+  srw_tac [][FLOOKUP_UPDATE,FLOOKUP_DEF] ) >>
+srw_tac [][Once RTC_CASES2,cell_reach1_def,FLOOKUP_UPDATE,reach1_cases] >>
+metis_tac [cell_reach_bound,FDOM_FUPDATE,pred_setTheory.IN_INSERT]);
 
 val _ = export_theory ()
