@@ -576,6 +576,33 @@ srw_tac [][Once has_type_cases] >>
 fsrw_tac [][reach_def,reach1_cases] >>
 PROVE_TAC []);
 
+val rhs_has_type_implies_lhs_unreachable = Q.store_thm(
+"rhs_has_type_implies_lhs_unreachable",
+`(∀v t. has_type s v t ⇒ ∀n. (FLOOKUP s.store n = SOME v) ⇒ ¬reach s.store n v) ∧
+ (∀n t. cell_has_type s n t ⇒ ∀v. (FLOOKUP s.store n = SOME v) ⇒ ¬reach s.store n v)`,
+ho_match_mp_tac has_type_ind >>
+reverse (srw_tac [][]) >-
+  fsrw_tac [][FLOOKUP_DEF] >>
+((
+  srw_tac [][reach_def,reach1_cases] >>
+  qmatch_rename_tac `n1 ≠ p ∧ n2 ≠ p ∨ ¬ cell_reach s.store m p` [] >>
+  Cases_on `m = n1` >- fsrw_tac [][reach_def,reach1_cases] >>
+  Cases_on `m = n2` >- fsrw_tac [][reach_def,reach1_cases] >>
+  `cell_reach1 s.store n1 m` by srw_tac [][cell_reach1_def,reach1_cases] >>
+  `cell_reach1 s.store n2 m` by srw_tac [][cell_reach1_def,reach1_cases] >>
+  srw_tac [][Once RTC_CASES2,cell_reach1_def] >>
+  fsrw_tac [][reach_def] >>
+  PROVE_TAC [RTC_RULES])
+ORELSE (
+  srw_tac [][reach_def,reach1_cases] >>
+  qmatch_rename_tac `¬ cell_reach s.store m p` [] >>
+  Cases_on `m = p` >- fsrw_tac [][reach_def,reach1_cases] >>
+  srw_tac [][Once RTC_CASES2,cell_reach1_def] >>
+  `cell_reach1 s.store p m` by srw_tac [][cell_reach1_def,reach1_cases] >>
+  fsrw_tac [][reach_def] >>
+  PROVE_TAC [RTC_RULES])
+));
+
 val has_type_assign_unbound = Q.store_thm(
 "has_type_assign_unbound",
 `(∀v t. has_type s v t ⇒ m ≠ 0 ∧ m ∉ FDOM s.store ⇒
