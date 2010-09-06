@@ -629,6 +629,23 @@ reverse (srw_tac [][]) >- (
 >- srw_tac [][typed_cell_def] >>
 srw_tac [][Once has_type_cases]);
 
+val has_type_assign_cached_unbound = Q.store_thm(
+"has_type_assign_cached_unbound",
+`(∀c v t. has_type s c v t ⇒ m ∈ c ∧ m ∉ FDOM s.store ⇒
+          has_type (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ m ∈ c ∧ m ∉ FDOM s.store ⇒
+        typed_cell (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) c n)`,
+ho_match_mp_tac (theorem "has_type_strongind") >>
+reverse (srw_tac [][]) >- (
+  fsrw_tac [][] >>
+  srw_tac [][typed_cell_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+  srw_tac [][] )
+>- srw_tac [][typed_cell_def,FLOOKUP_UPDATE,FLOOKUP_DEF]
+>- srw_tac [][typed_cell_def] >>
+fsrw_tac [][] >>
+srw_tac [][Once has_type_cases,APPLY_UPDATE_THM] >>
+fsrw_tac [][type_inductive,typed_cell_def,FLOOKUP_DEF]);
+
 val has_type_assign_bound = Q.store_thm(
 "has_type_assign_bound",
 `(∀c v t. has_type s c v t ⇒ m ≠ 0 ∧ m ∈ FDOM s.store ∧ has_type s c w (s.cell_type m) ⇒
