@@ -75,7 +75,7 @@ val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
   (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = type)) ∧
    typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = AuxList_type type)) ⇒
    has_type s c (AuxList_value m1 m2) (AuxList_type type)) ∧
-  (m ∈ c ⇒ typed_cell s c m) ∧
+  (m ∈ c ∧ m ∈ FDOM s.store ⇒ typed_cell s c m) ∧
   (0 ∉ FDOM s.store ⇒ typed_cell s c 0) ∧
   ((FLOOKUP s.store n = SOME v) ∧ has_type s (n INSERT c) v (s.cell_type n) ⇒ typed_cell s c n)`;
 
@@ -575,11 +575,13 @@ reverse (srw_tac [][]) >- (
   PROVE_TAC [RTC_REFL,FLOOKUP_reach_imp_cell_reach] ) >>
 srw_tac [][Once has_type_cases] >>
 fsrw_tac [][reach_def,reach1_cases] >>
-PROVE_TAC []);
+PROVE_TAC [RTC_RULES]);
 
 val typed_cell_def = Q.store_thm(
 "typed_cell_def",
-`typed_cell s c n = n ∈ c ∨ case FLOOKUP s.store n of SOME v -> has_type s (n INSERT c) v (s.cell_type n) || NONE -> (n = 0)`,
+`typed_cell s c n =
+   n ∈ FDOM s.store ∧ n ∈ c ∨
+   case FLOOKUP s.store n of SOME v -> has_type s (n INSERT c) v (s.cell_type n) || NONE -> (n = 0)`,
 srw_tac [][Once has_type_cases] >>
 Cases_on `FLOOKUP s.store n` >> srw_tac [][] >>
 fsrw_tac [][FLOOKUP_DEF] >>
