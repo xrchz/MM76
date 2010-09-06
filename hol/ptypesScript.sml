@@ -52,34 +52,35 @@ type = Variable_type
 val _ = Hol_datatype `state = <| store : store ; cell_type : num -> type |>`;
 
 val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
-  (typed_cell s m ∧ (m ≠ 0 ⇒ (s.cell_type m = Multiequation_type)) ⇒
-   has_type s (Variable_value _ m) Variable_type) ∧
-  (typed_cell s m ∧ (m ≠ 0 ⇒ (s.cell_type m = List_type Variable_type)) ⇒
-   has_type s (SetOfVariables_value _ _ m) SetOfVariables_type) ∧
-  (typed_cell s m ∧ (m ≠ 0 ⇒ (s.cell_type m = Variable_type)) ⇒
-   has_type s (Term_value (INL m)) Term_type) ∧
-  (typed_cell s m ∧ (m ≠ 0 ⇒ (s.cell_type m = List_type Term_type)) ⇒
-   has_type s (Term_value (INR (_,m))) Term_type) ∧
-  (typed_cell s m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = SetOfVariables_type)) ∧
-   typed_cell s m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Term_type)) ⇒
-   has_type s (Multiequation_value _ m1 m2) Multiequation_type) ∧
-  (typed_cell s m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = List_type Term_type)) ∧
-   typed_cell s m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Term_type)) ⇒
-   has_type s (TempMultiequation_value m1 m2) TempMultiequation_type) ∧
-  (typed_cell s m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = List_type Multiequation_type)) ∧
-   typed_cell s m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Multiequation_type)) ⇒
-   has_type s (System_value m1 m2) System_type) ∧
-  (typed_cell s m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = AuxList_type type)) ∧
-   typed_cell s m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = AuxList_type type)) ⇒
-   has_type s (List_value m1 m2) (List_type type)) ∧
-  (typed_cell s m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = type)) ∧
-   typed_cell s m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = AuxList_type type)) ⇒
-   has_type s (AuxList_value m1 m2) (AuxList_type type)) ∧
-  (0 ∉ FDOM s.store ⇒ typed_cell s 0) ∧
-  ((FLOOKUP s.store n = SOME v) ∧ has_type s v (s.cell_type n) ⇒ typed_cell s n)`;
+  (typed_cell s c m ∧ (m ≠ 0 ⇒ (s.cell_type m = Multiequation_type)) ⇒
+   has_type s c (Variable_value _ m) Variable_type) ∧
+  (typed_cell s c m ∧ (m ≠ 0 ⇒ (s.cell_type m = List_type Variable_type)) ⇒
+   has_type s c (SetOfVariables_value _ _ m) SetOfVariables_type) ∧
+  (typed_cell s c m ∧ (m ≠ 0 ⇒ (s.cell_type m = Variable_type)) ⇒
+   has_type s c (Term_value (INL m)) Term_type) ∧
+  (typed_cell s c m ∧ (m ≠ 0 ⇒ (s.cell_type m = List_type Term_type)) ⇒
+   has_type s c (Term_value (INR (_,m))) Term_type) ∧
+  (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = SetOfVariables_type)) ∧
+   typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Term_type)) ⇒
+   has_type s c (Multiequation_value _ m1 m2) Multiequation_type) ∧
+  (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = List_type Term_type)) ∧
+   typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Term_type)) ⇒
+   has_type s c (TempMultiequation_value m1 m2) TempMultiequation_type) ∧
+  (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = List_type Multiequation_type)) ∧
+   typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = List_type Multiequation_type)) ⇒
+   has_type s c (System_value m1 m2) System_type) ∧
+  (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = AuxList_type type)) ∧
+   typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = AuxList_type type)) ⇒
+   has_type s c (List_value m1 m2) (List_type type)) ∧
+  (typed_cell s c m1 ∧ (m1 ≠ 0 ⇒ (s.cell_type m1 = type)) ∧
+   typed_cell s c m2 ∧ (m2 ≠ 0 ⇒ (s.cell_type m2 = AuxList_type type)) ⇒
+   has_type s c (AuxList_value m1 m2) (AuxList_type type)) ∧
+  (m ∈ c ⇒ typed_cell s c m) ∧
+  (0 ∉ FDOM s.store ⇒ typed_cell s c 0) ∧
+  ((FLOOKUP s.store n = SOME v) ∧ has_type s (n INSERT c) v (s.cell_type n) ⇒ typed_cell s c n)`;
 
 val typed_state_def = Define`
-   typed_state s = ∀n. n ∈ FDOM s.store ⇒ typed_cell s n`;
+   typed_state s = ∀n. n ∈ FDOM s.store ⇒ typed_cell s {} n`;
 
 val _ = type_abbrev("inject", ``:'a -> value``);
 val _ = type_abbrev("project", ``:value -> 'a option``);
@@ -454,7 +455,7 @@ Induct >> srw_tac [][]);
 
 val typed_cell_bound = Q.store_thm(
 "typed_cell_bound",
-`typed_cell s n ⇒ n ≠ 0 ⇒ n ∈ FDOM s.store`,
+`typed_cell s ms n ⇒ (n = 0) ∨ n ∈ ms ∨ n ∈ FDOM s.store`,
 srw_tac [][Once has_type_cases,FLOOKUP_DEF] >> srw_tac [][]);
 
 val assign_comm = Q.store_thm(
@@ -549,15 +550,16 @@ srw_tac [SATISFY_ss][Once RTC_CASES2,cell_reach1_def]);
 
 val has_type_assign_unreachable = Q.store_thm(
 "has_type_assign_unreachable",
-`(∀v t. has_type s v t ⇒ ¬ reach s.store m v ⇒ has_type (s with store updated_by (m =+ w)) v t) ∧
- (∀n. typed_cell s n ⇒ ¬ cell_reach s.store m n ⇒ typed_cell (s with store updated_by (m =+ w)) n)`,
+`(∀c v t. has_type s c v t ⇒ ¬ reach s.store m v ⇒ has_type (s with store updated_by (m =+ w)) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ ¬ cell_reach s.store m n ⇒ typed_cell (s with store updated_by (m =+ w)) c n)`,
 ho_match_mp_tac has_type_ind >>
 reverse (srw_tac [][]) >- (
   srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
   PROVE_TAC [RTC_REFL,FLOOKUP_reach_imp_cell_reach] )
 >- (
   srw_tac [][Once has_type_cases] >>
-  PROVE_TAC [RTC_REFL] ) >>
+  PROVE_TAC [RTC_REFL] )
+>- srw_tac [][Once has_type_cases] >>
 fsrw_tac [][reach_def,reach1_cases] >>
 srw_tac [][Once has_type_cases] >>
 first_x_assum match_mp_tac >>
@@ -565,8 +567,8 @@ PROVE_TAC []);
 
 val has_type_remove_unreachable = Q.store_thm(
 "has_type_remove_unreachable",
-`(∀v t. has_type s v t ⇒ ¬ reach s.store m v ⇒ has_type (s with store updated_by combin$C $\\ m) v t) ∧
- (∀n. typed_cell s n ⇒ ¬ cell_reach s.store m n ⇒ typed_cell (s with store updated_by combin$C $\\ m) n)`,
+`(∀c v t. has_type s c v t ⇒ ¬ reach s.store m v ⇒ has_type (s with store updated_by combin$C $\\ m) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ ¬ cell_reach s.store m n ⇒ typed_cell (s with store updated_by combin$C $\\ m) c n)`,
 ho_match_mp_tac has_type_ind >>
 reverse (srw_tac [][]) >- (
   srw_tac [][Once has_type_cases,DOMSUB_FLOOKUP_THM] >>
@@ -575,72 +577,72 @@ srw_tac [][Once has_type_cases] >>
 fsrw_tac [][reach_def,reach1_cases] >>
 PROVE_TAC []);
 
-val rhs_has_type_implies_lhs_unreachable = Q.store_thm(
-"rhs_has_type_implies_lhs_unreachable",
-`(∀v t. has_type s v t ⇒ ∀n. (FLOOKUP s.store n = SOME v) ⇒ ¬reach s.store n v) ∧
- (∀n. typed_cell s n ⇒ ∀v. (FLOOKUP s.store n = SOME v) ⇒ ¬reach s.store n v)`,
-ho_match_mp_tac has_type_ind >>
-reverse (srw_tac [][]) >-
-  fsrw_tac [][FLOOKUP_DEF] >>
-((
-  srw_tac [][reach_def,reach1_cases] >>
-  qmatch_rename_tac `n1 ≠ p ∧ n2 ≠ p ∨ ¬ cell_reach s.store m p` [] >>
-  Cases_on `m = n1` >- fsrw_tac [][reach_def,reach1_cases] >>
-  Cases_on `m = n2` >- fsrw_tac [][reach_def,reach1_cases] >>
-  `cell_reach1 s.store n1 m` by srw_tac [][cell_reach1_def,reach1_cases] >>
-  `cell_reach1 s.store n2 m` by srw_tac [][cell_reach1_def,reach1_cases] >>
-  srw_tac [][Once RTC_CASES2,cell_reach1_def] >>
-  fsrw_tac [][reach_def] >>
-  PROVE_TAC [RTC_RULES])
-ORELSE (
-  srw_tac [][reach_def,reach1_cases] >>
-  qmatch_rename_tac `¬ cell_reach s.store m p` [] >>
-  Cases_on `m = p` >- fsrw_tac [][reach_def,reach1_cases] >>
-  srw_tac [][Once RTC_CASES2,cell_reach1_def] >>
-  `cell_reach1 s.store p m` by srw_tac [][cell_reach1_def,reach1_cases] >>
-  fsrw_tac [][reach_def] >>
-  PROVE_TAC [RTC_RULES])
-));
-
 val typed_cell_def = Q.store_thm(
 "typed_cell_def",
-`typed_cell s n = case FLOOKUP s.store n of SOME v -> has_type s v (s.cell_type n) || NONE -> (n = 0)`,
+`typed_cell s c n = n ∈ c ∨ case FLOOKUP s.store n of SOME v -> has_type s (n INSERT c) v (s.cell_type n) || NONE -> (n = 0)`,
 srw_tac [][Once has_type_cases] >>
 Cases_on `FLOOKUP s.store n` >> srw_tac [][] >>
 fsrw_tac [][FLOOKUP_DEF] >>
 PROVE_TAC []);
 
+val has_type_INSERT_cached = Q.store_thm(
+"has_type_INSERT_cached",
+`(∀c v t. has_type s c v t ⇒ has_type s (m INSERT c) v t) ∧
+ (∀c n. typed_cell s c n ⇒ typed_cell s (m INSERT c) n)`,
+ho_match_mp_tac has_type_ind >>
+reverse (srw_tac [][])
+>- srw_tac [][typed_cell_def,pred_setTheory.INSERT_COMM]
+>- srw_tac [][typed_cell_def,FLOOKUP_DEF]
+>- srw_tac [][typed_cell_def] >>
+srw_tac [][Once has_type_cases]);
+
 val has_type_assign_unbound = Q.store_thm(
 "has_type_assign_unbound",
-`(∀v t. has_type s v t ⇒ m ≠ 0 ∧ m ∉ FDOM s.store ⇒
-        has_type (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) v t) ∧
- (∀n. typed_cell s n ⇒ m ≠ 0 ∧ m ∉ FDOM s.store ⇒
-      typed_cell (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) n)`,
+`(∀c v t. has_type s c v t ⇒ m ≠ 0 ∧ m ∉ FDOM s.store ∧ m ∉ c ⇒
+          has_type (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ m ≠ 0 ∧ m ∉ FDOM s.store ∧ m ∉ c ⇒
+        typed_cell (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) c n)`,
 ho_match_mp_tac (theorem "has_type_strongind") >>
 reverse (srw_tac [][]) >- (
   fsrw_tac [][] >>
   srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
   fsrw_tac [][FLOOKUP_DEF] )
->- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
+>- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE]
+>- srw_tac [][Once has_type_cases] >>
 srw_tac [][Once has_type_cases,APPLY_UPDATE_THM] >>
 fsrw_tac [][typed_cell_def,type_inductive,FLOOKUP_UPDATE] >>
 fsrw_tac [][FLOOKUP_DEF]);
 
-val has_type_assign_bound = Q.store_thm(
-"has_type_assign_bound",
-`(∀v t. has_type s v t ⇒ m ≠ 0 ∧ m ∈ FDOM s.store ∧ ¬ reach s.store m w ∧ has_type s w (s.cell_type m) ⇒
-        has_type (s with <|store updated_by (m =+ w) |>) v t) ∧
- (∀n. typed_cell s n ⇒ m ≠ 0 ∧ m ∈ FDOM s.store ∧ ¬ reach s.store m w ∧ has_type s w (s.cell_type m) ⇒
-      typed_cell (s with <|store updated_by (m =+ w) |>) n)`,
+val has_type_assign_cached = Q.store_thm(
+"has_type_assign_cached",
+`(∀c v t. has_type s c v t ⇒ m ∈ c ⇒
+          has_type (s with <|store updated_by (m =+ w)|>) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ m ∈ c ⇒
+        typed_cell (s with <|store updated_by (m =+ w)|>) c n)`,
 ho_match_mp_tac has_type_ind >>
 reverse (srw_tac [][]) >- (
-  fsrw_tac [][] >>
-  srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
-  srw_tac [][] >>
-  `m ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
-  match_mp_tac (MP_CANON (CONJUNCT1 has_type_assign_unreachable)) >>
-  fsrw_tac [][] )
->- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE] >>
+  srw_tac [][typed_cell_def,FLOOKUP_UPDATE] >>
+  fsrw_tac [][APPLY_UPDATE_THM] )
+>- srw_tac [][typed_cell_def,FLOOKUP_UPDATE,FLOOKUP_DEF]
+>- srw_tac [][typed_cell_def] >>
+srw_tac [][Once has_type_cases]);
+
+val has_type_assign_bound = Q.store_thm(
+"has_type_assign_bound",
+`(∀c v t. has_type s c v t ⇒ m ≠ 0 ∧ m ∈ FDOM s.store ∧ has_type s c w (s.cell_type m) ⇒
+          has_type (s with <|store updated_by (m =+ w) |>) c v t) ∧
+ (∀c n. typed_cell s c n ⇒ m ≠ 0 ∧ m ∈ FDOM s.store ∧ has_type s c w (s.cell_type m) ⇒
+        typed_cell (s with <|store updated_by (m =+ w) |>) c n)`,
+ho_match_mp_tac has_type_ind >>
+reverse (srw_tac [][]) >- (
+  fsrw_tac [][has_type_INSERT_cached] >>
+  srw_tac [][typed_cell_def] >>
+  Cases_on `n ∈ c` >> srw_tac [][] >>
+  srw_tac [][FLOOKUP_UPDATE] >> srw_tac [][] >>
+  (has_type_assign_cached |> CONJUNCT1 |> MP_CANON |> MATCH_MP_TAC) >>
+  srw_tac [][has_type_INSERT_cached] )
+>- srw_tac [][Once has_type_cases,FLOOKUP_UPDATE]
+>- srw_tac [][typed_cell_def] >>
 srw_tac [][Once has_type_cases]);
 
 val assign_FDOM = Q.store_thm(
@@ -671,13 +673,13 @@ srw_tac [][typed_state_def,APPLY_UPDATE_THM] >- (
   ntac 3 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM]) ) >>
 `f1 ≠ n ∧ f2 ≠ n` by PROVE_TAC [] >>
 srw_tac [][] >>
-qmatch_abbrev_tac `typed_cell (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) n` >>
-qsuff_tac `typed_cell ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1; cell_type updated_by x3|>) n` >- srw_tac [][] >>
+qmatch_abbrev_tac `typed_cell (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) {} n` >>
+qsuff_tac `typed_cell ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1; cell_type updated_by x3|>) {} n` >- srw_tac [][] >>
 unabbrev_all_tac >>
 (has_type_assign_unbound |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
-srw_tac [][reach_def,reach1_cases] >>
+srw_tac [][] >>
 (has_type_assign_unbound |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
-srw_tac [][reach_def,reach1_cases] >>
+srw_tac [][] >>
 fsrw_tac [][typed_state_def]);
 
 val cell_reach_typed_state_unbound_eq_0 = Q.store_thm(
