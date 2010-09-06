@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax combinTheory lcsymtacs relationTheory
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse pairTheory optionTheory stringTheory finite_mapTheory sumTheory state_transformerTheory option_transformerTheory monadsyntax combinTheory lcsymtacs relationTheory pred_setTheory
 
 val _ = new_theory "ptypes"
 
@@ -316,7 +316,7 @@ val list_of_List_def = Define`
 val NOTIN_INFINITE_FDOM_exists = Q.store_thm(
 "NOTIN_INFINITE_FDOM_exists",
 `INFINITE (UNIV : 'a set) ⇒ ∃x. x ∉ (FDOM f : 'a set)`,
-PROVE_TAC [pred_setTheory.IN_INFINITE_NOT_FINITE,FDOM_FINITE]);
+PROVE_TAC [IN_INFINITE_NOT_FINITE,FDOM_FINITE]);
 val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
 
 val free_addr_elim_thm = Q.store_thm(
@@ -465,7 +465,7 @@ val assign_comm = Q.store_thm(
   SND (raw_assign emb2 p2 v2 (SND (raw_assign emb1 p1 v1 s))))`,
 Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
 srw_tac [][theorem "state_component_equality",FUN_EQ_THM,APPLY_UPDATE_THM] >>
-srw_tac [][GSYM fmap_EQ,pred_setTheory.INSERT_COMM] >>
+srw_tac [][GSYM fmap_EQ,INSERT_COMM] >>
 srw_tac [][FUN_EQ_THM,FAPPLY_FUPDATE_THM] >>
 srw_tac [][]);
 
@@ -593,7 +593,7 @@ val has_type_INSERT_cached = Q.store_thm(
  (∀c n. typed_cell s c n ⇒ typed_cell s (m INSERT c) n)`,
 ho_match_mp_tac has_type_ind >>
 reverse (srw_tac [][])
->- srw_tac [][typed_cell_def,pred_setTheory.INSERT_COMM]
+>- srw_tac [][typed_cell_def,INSERT_COMM]
 >- srw_tac [][typed_cell_def,FLOOKUP_DEF]
 >- srw_tac [][typed_cell_def] >>
 srw_tac [][Once has_type_cases]);
