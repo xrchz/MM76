@@ -37,8 +37,6 @@ value = Variable_value of varname => num
       | AuxList_value of num => num
       | List_value of num => num`;
 
-val _ = type_abbrev("store", ``:num |-> value``);
-
 val _ = Hol_datatype `
 type = Variable_type
      | SetOfVariables_type
@@ -49,7 +47,19 @@ type = Variable_type
      | AuxList_type of type
      | List_type of type`;
 
-val _ = Hol_datatype `state = <| store : store ; cell_type : num -> type |>`;
+val _ = Hol_datatype `var = var of 'a itself => string`;
+val _ = Hol_datatype`
+  vvalue = Bool of bool | Num of num | String of string | Ptr of num`;
+val _ = Hol_datatype`
+  vtype = Bool_type | Num_type | String_type | Ptr_type of type`;
+val project_Bool_def = Define`(project_Bool (Bool x) = SOME x) ∧ (project_Bool _ = NONE)`;
+val project_Num_def = Define`(project_Num (Num x) = SOME x) ∧ (project_Num _ = NONE)`;
+val project_String_def = Define`(project_String (String x) = SOME x) ∧ (project_String _ = NONE)`;
+val project_Ptr_def = Define`(project_Ptr (Ptr x) = SOME x) ∧ (project_Ptr _ = NONE)`;
+val _ = export_rewrites["project_Bool_def","project_Num_def","project_String_def","project_Ptr_def"];
+
+val _ = Hol_datatype `state = <| store : num |-> value ; cell_type : num -> type ;
+                                 vars : string |-> vtype ; vvalue : string -> vvalue |>`;
 
 val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
   (typed_cell s c m ∧ (m ≠ 0 ⇒ (s.cell_type m = Multiequation_type)) ⇒
@@ -79,11 +89,16 @@ val (has_type_rules, has_type_ind, has_type_cases) = Hol_reln`
   (0 ∉ FDOM s.store ⇒ typed_cell s c 0) ∧
   ((FLOOKUP s.store n = SOME v) ∧ has_type s (n INSERT c) v (s.cell_type n) ⇒ typed_cell s c n)`;
 
-val typed_state_def = Define`
-   typed_state s = ∀n. n ∈ FDOM s.store ⇒ typed_cell s {} n`;
-
 val wfstate_def = Define`
-  wfstate s = typed_state s ∧ 0 ∉ FDOM s.store`;
+  wfstate s =
+   0 ∉ FDOM s.store ∧
+   (∀n. n ∈ FDOM s.store ⇒ typed_cell s {} n) ∧
+   (∀v. (FLOOKUP s.vars v = SOME Bool_type) ⇒ project_Bool (s.vvalue v) ≠ NONE) ∧
+   (∀v. (FLOOKUP s.vars v = SOME Num_type) ⇒ project_Num (s.vvalue v) ≠ NONE) ∧
+   (∀v. (FLOOKUP s.vars v = SOME String_type) ⇒ project_String (s.vvalue v) ≠ NONE) ∧
+   (∀v t. (FLOOKUP s.vars v = SOME (Ptr_type t)) ⇒
+          ∃n. (project_Ptr (s.vvalue v) = SOME n) ∧
+              (n ∈ FDOM s.store ⇒ (s.cell_type n = t)))`;
 
 val _ = type_abbrev("inject", ``:'a -> value``);
 val _ = type_abbrev("project", ``:value -> 'a option``);
