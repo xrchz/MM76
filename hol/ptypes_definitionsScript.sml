@@ -157,6 +157,14 @@ val _ = overload_on("lookup", ``λp:TempMultiequation ptr. raw_lookup embed_Temp
 val _ = overload_on("lookup", ``λp:System ptr. raw_lookup embed_System p``);
 val _ = overload_on("lookup", ``λemb. raw_lookup (embed_AuxList emb)``);
 val _ = overload_on("lookup", ``λemb. raw_lookup (embed_List emb)``);
+val _ = overload_on("lookup", ``λp:Term AuxList ptr. lookup embed_Term p``);
+val _ = overload_on("lookup", ``λp:Multiequation AuxList ptr. lookup embed_Multiequation p``);
+val _ = overload_on("lookup", ``λp:TempMultiequation AuxList ptr. lookup embed_TempMultiequation p``);
+val _ = overload_on("lookup", ``λp:Variable AuxList ptr. lookup embed_Variable p``);
+val _ = overload_on("lookup", ``λp:Term List ptr. lookup embed_Term p``);
+val _ = overload_on("lookup", ``λp:Multiequation List ptr. lookup embed_Multiequation p``);
+val _ = overload_on("lookup", ``λp:TempMultiequation List ptr. lookup embed_TempMultiequation p``);
+val _ = overload_on("lookup", ``λp:Variable List ptr. lookup embed_Variable p``);
 
 val raw_assign_def = Define`
   raw_assign (emb:'a embed) (addr _ n : 'a ptr) v =
@@ -170,6 +178,14 @@ val _ = overload_on("assign", ``λp:TempMultiequation ptr. raw_assign embed_Temp
 val _ = overload_on("assign", ``λp:System ptr. raw_assign embed_System p``);
 val _ = overload_on("assign", ``λemb. raw_assign (embed_AuxList emb)``);
 val _ = overload_on("assign", ``λemb. raw_assign (embed_List emb)``);
+val _ = overload_on("assign", ``λp:Term AuxList ptr. assign embed_Term p``);
+val _ = overload_on("assign", ``λp:Multiequation AuxList ptr. assign embed_Multiequation p``);
+val _ = overload_on("assign", ``λp:TempMultiequation AuxList ptr. assign embed_TempMultiequation p``);
+val _ = overload_on("assign", ``λp:Variable AuxList ptr. assign embed_Variable p``);
+val _ = overload_on("assign", ``λp:Term List ptr. assign embed_Term p``);
+val _ = overload_on("assign", ``λp:Multiequation List ptr. assign embed_Multiequation p``);
+val _ = overload_on("assign", ``λp:TempMultiequation List ptr. assign embed_TempMultiequation p``);
+val _ = overload_on("assign", ``λp:Variable List ptr. assign embed_Variable p``);
 
 val dispose_def = Define`
   dispose (addr _ n) = λs. ((), s with store updated_by (λs. s \\ n))`;
@@ -186,6 +202,14 @@ val _ = overload_on("new", ``λv:TempMultiequation. raw_new embed_TempMultiequat
 val _ = overload_on("new", ``λv:System. raw_new embed_System v``);
 val _ = overload_on("new", ``λemb. raw_new (embed_AuxList emb)``);
 val _ = overload_on("new", ``λemb. raw_new (embed_List emb)``);
+val _ = overload_on("new", ``λv:Term AuxList. new embed_Term v``);
+val _ = overload_on("new", ``λv:Multiequation AuxList. new embed_Multiequation v``);
+val _ = overload_on("new", ``λv:TempMultiequation AuxList. new embed_TempMultiequation v``);
+val _ = overload_on("new", ``λv:Variable AuxList. new embed_Variable v``);
+val _ = overload_on("new", ``λv:Term List. new embed_Term v``);
+val _ = overload_on("new", ``λv:Multiequation List. new embed_Multiequation v``);
+val _ = overload_on("new", ``λv:TempMultiequation List. new embed_TempMultiequation v``);
+val _ = overload_on("new", ``λv:Variable List. new embed_Variable v``);
 
 val _ = export_rewrites["raw_lookup_def","raw_assign_def","dispose_def","raw_new_def"];
 
