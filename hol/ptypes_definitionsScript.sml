@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib Parse stringTheory finite_mapTheory option_stateTheory monadsyntax
+open HolKernel bossLib boolLib Parse stringTheory finite_mapTheory state_optionTheory monadsyntax
 
 val _ = new_theory "ptypes_definitions"
 
