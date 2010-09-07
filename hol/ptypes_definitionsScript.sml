@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib Parse stringTheory finite_mapTheory option_transformerTheory monadsyntax
+open HolKernel bossLib boolLib Parse stringTheory finite_mapTheory option_stateTheory monadsyntax
 
 val _ = new_theory "ptypes_definitions"
 
@@ -145,10 +145,12 @@ val is_embed_def = Define`
 
 val raw_lookup_def = Define`
   raw_lookup (emb:'a embed) (addr _ n : 'a ptr) =
-  do v <- (λs. (FLOOKUP s.store n, s)) ;
-     t <- (λs. (SOME (s.cell_type n), s)) ;
-     if t = emb.type then return (emb.project v) else OPTIONT_FAIL
-  od`;
+   (λs.
+     OPTION_BIND (FLOOKUP s.store n)
+                 (λv. if s.cell_type n = emb.type then
+                        OPTION_BIND (emb.project v) (λpv. SOME (pv, s))
+                      else NONE))
+`;
 val _ = overload_on("lookup", ``λp:Variable ptr. raw_lookup embed_Variable p``);
 val _ = overload_on("lookup", ``λp:SetOfVariables ptr. raw_lookup embed_SetOfVariables p``);
 val _ = overload_on("lookup", ``λp:Term ptr. raw_lookup embed_Term p``);
@@ -168,8 +170,8 @@ val _ = overload_on("lookup", ``λp:Variable List ptr. lookup embed_Variable p``
 
 val raw_assign_def = Define`
   raw_assign (emb:'a embed) (addr _ n : 'a ptr) v =
-  λs. ((), s with <| store updated_by (n =+ (emb.inject v)) ;
-                     cell_type updated_by (n =+ emb.type) |>)`;
+  λs. SOME ((), s with <| store updated_by (n =+ (emb.inject v)) ;
+                          cell_type updated_by (n =+ emb.type) |>)`;
 val _ = overload_on("assign", ``λp:Variable ptr. raw_assign embed_Variable p``);
 val _ = overload_on("assign", ``λp:SetOfVariables ptr. raw_assign embed_SetOfVariables p``);
 val _ = overload_on("assign", ``λp:Term ptr. raw_assign embed_Term p``);
@@ -188,10 +190,10 @@ val _ = overload_on("assign", ``λp:TempMultiequation List ptr. assign embed_Tem
 val _ = overload_on("assign", ``λp:Variable List ptr. assign embed_Variable p``);
 
 val dispose_def = Define`
-  dispose (addr _ n) = λs. ((), s with store updated_by (λs. s \\ n))`;
+  dispose (addr _ n) = λs. SOME ((), s with store updated_by (λs. s \\ n))`;
 
 val free_addr_def = Define`
-  free_addr = λs. (addr (:'a) (@n. n ≠ 0 ∧ n ∉ FDOM s.store), s)`;
+  free_addr = λs. SOME (addr (:'a) (@n. n ≠ 0 ∧ n ∉ FDOM s.store), s)`;
 
 val raw_new_def = Define`raw_new emb v = do ptr <- free_addr ; raw_assign emb ptr v ; return ptr od`;
 val _ = overload_on("new", ``λv:Variable. raw_new embed_Variable v``);
@@ -307,15 +309,18 @@ val _ = overload_on("AppendListsOfVariables", ``AppendLists embed_Variable``);
 val (list_of_AuxList_rules, list_of_AuxList_ind, list_of_AuxList_cases) = Hol_reln`
   (list_of_AuxList emb s last last []) ∧
   (al ≠ last ∧
-   (FST ((do al' <- lookup emb al ;
-             (hd':'a) <- raw_lookup emb al'.head ;
-             return (hd',al'.tail)
-          od) s) =
-    SOME (hd',tl)) ∧
+   (OPTION_MAP FST
+       (do al' <- lookup emb al ;
+           (hd':'a) <- raw_lookup emb al'.head ;
+           return (hd',al'.tail)
+        od s)
+    = SOME (hd',tl)) ∧
    list_of_AuxList emb s last tl tl' ⇒
    list_of_AuxList emb s last al (hd'::tl'))`;
 
 val list_of_List_def = Define`
-  list_of_List emb s l al' = ∃l'. (FST (lookup emb l s) = SOME l') ∧ list_of_AuxList emb s l'.last l'.first al'`;
+  list_of_List emb s l al' =
+     ∃l'. (OPTION_MAP FST (lookup emb l s) = SOME l') ∧
+          list_of_AuxList emb s l'.last l'.first al'`;
 
 val _ = export_theory ()
