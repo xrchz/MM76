@@ -1,6 +1,40 @@
 open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory
+open lcsymtacs
 
 val _ = new_theory "reduce"
+
+val fWHILE_def = Define`
+  fWHILE Guard Body s =
+    WHILE (λ(b,s). b ∧ Guard s)
+          (λ(b,s). case Body s of NONE -> (F, s)
+                               || SOME s' -> (T, s'))
+          (T,s)
+`;
+
+val fWHILE_EQN = store_thm(
+  "fWHILE_EQN",
+  ``fWHILE P B s = if P s then
+                     case B s of
+                        NONE -> NONE
+                     || SOME s' -> fWHILE P B s'
+                   else SOME s``,
+  srw_tac [][fWHILE_def, SimpLHS] >|[
+    asm_simp_tac (srw_ss())[Ntimes whileTheory.WHILE 2] >>
+    Cases_on `B s` >> srw_tac [][] >>
+    srw_tac [][fWHILE_def] >> srw_tac [][SimpRHS, Once whileTheory.WHILE],
+    srw_tac [][Once whileTheory.WHILE]
+  ]);
+
+val segWHILE_def = Define`
+  segWHILE (Guard : α -> (bool # α) option)
+           (Body  : α -> (unit # α) option)
+           (s:α) : unit option # α =
+    case Guard s of
+       NONE -> (NONE, s)
+    || SOME g0 ->
+         fWHILE FST (λ(g0,s). case (do Body ; Guard od) s of
+                                 (NONE, s') -> NONE
+                              || (SOME g, s') -> SOME (g,s'))
 
 val repeat_def = Define`
   repeat block until = do
