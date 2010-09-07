@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory option_transformerTheory state_transformerTheory pairTheory combinTheory relationTheory lcsymtacs
+open HolKernel bossLib boolLib SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory lcsymtacs
 
 val _ = new_theory "ptypes"
 
@@ -33,7 +33,7 @@ val _ = export_rewrites["NOTIN_INFINITE_FDOM_exists"];
 
 val free_addr_elim_thm = Q.store_thm(
 "free_addr_elim_thm",
-`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s.store ⇒ P (addr (:'a) n,s)) ⇒ P (free_addr s)`,
+`∀P s. (∀n. n ≠ 0 ∧ n ∉ FDOM s.store ⇒ P (SOME (addr (:'a) n,s))) ⇒ P (free_addr s)`,
 srw_tac [][free_addr_def] >>
 SELECT_ELIM_TAC >>
 `∃x. x ∉ FDOM (s.store|+(0,ARB))` by srw_tac [][] >>
@@ -43,7 +43,7 @@ fun is_free_addr tm = let
   val (f,_) = dest_comb tm
   val ("free_addr",ty) = dest_const f
 in
-  can (match_type ``:state -> 'a ptr # state``) ty
+  can (match_type ``:state -> ('a ptr # state) option``) ty
 end handle HOL_ERR _ => false | Bind => false
 
 fun free_addr_elim_tac (g as (_, w)) = let
@@ -53,111 +53,120 @@ in
   MATCH_MP_TAC free_addr_elim_thm THEN BETA_TAC
 end g
 
-val _ = augment_srw_ss [rewrites [BIND_DEF,IGNORE_BIND_DEF,UNIT_DEF,OPTIONT_BIND_def,OPTIONT_FAIL_def,OPTIONT_UNIT_def]]
+val _ = augment_srw_ss [rewrites [STATE_OPTION_IGNORE_BIND_def,STATE_OPTION_BIND_def,STATE_OPTION_FAIL_def,STATE_OPTION_UNIT_def]]
+val _ = augment_srw_ss [rewrites [OPTION_BIND_def]]
 
 val CreateList_empty = Q.store_thm(
 "CreateList_empty",
-`(CreateList emb s0 = (l, s)) ⇒ list_of_List emb s l []`,
+`(CreateList emb s0 = SOME (l, s)) ⇒ list_of_List emb s l []`,
 simp_tac (srw_ss()) [CreateList_def,raw_new_def] >>
-free_addr_elim_tac >> srw_tac [][UNCURRY] >>
-free_addr_elim_tac >>
+free_addr_elim_tac >> srw_tac [][EXISTS_PROD] >>
+qpat_assum `free_addr X = Y` mp_tac >>
+free_addr_elim_tac >> srw_tac [][] >>
+fsrw_tac [][] >> srw_tac [][] >>
 srw_tac [][list_of_List_def,Once list_of_AuxList_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
 
 val lookup_state = Q.store_thm(
 "lookup_state",
-`SND (raw_lookup emb ptr s) = s`,
+`(raw_lookup emb ptr s = SOME p) ⇒ (SND p = s)`,
 Cases_on `emb` >> Cases_on `ptr` >>
 srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
-val _ = export_rewrites["lookup_state"];
 
 val HeadOfList_state = Q.store_thm(
 "HeadOfList_state",
-`SND (HeadOfList emb l s) = s`,
-`SND (lookup emb l s) = s` by MATCH_ACCEPT_TAC lookup_state >>
-srw_tac [][HeadOfList_def,lookup_state,UNCURRY] >>
-Cases_on `FST (lookup emb l s)` >> srw_tac [][] >>
-`SND (lookup emb x.first s) = s` by MATCH_ACCEPT_TAC lookup_state >>
-srw_tac [][UNCURRY] >>
-Cases_on `FST (lookup emb x.first s)` >> srw_tac [][]);
-val _ = export_rewrites["HeadOfList_state"];
+`(HeadOfList emb l s = SOME p) ⇒ (SND p = s)`,
+srw_tac [][HeadOfList_def,UNCURRY] >>
+imp_res_tac lookup_state >> srw_tac [][]);
 
 val TailOfList_store = Q.store_thm(
 "TailOfList_store",
-`(lookup emb l s = (SOME l', s')) ⇒ ((SND (TailOfList emb l s)).store \\ (ptr_to_num l) \\ (ptr_to_num l'.first) = s.store \\ (ptr_to_num l) \\ (ptr_to_num l'.first))`,
+`(lookup emb l s = SOME p1) ∧ (TailOfList emb l s = SOME p2) ⇒
+ ((SND p2).store \\ (ptr_to_num l) \\ (ptr_to_num (FST p1).first) =
+  s.store \\ (ptr_to_num l) \\ (ptr_to_num (FST p1).first))`,
 srw_tac [][TailOfList_def,UNCURRY] >>
-`s' = s` by PROVE_TAC [lookup_state,SND] >>
-`SND (lookup emb l'.first s) = s` by PROVE_TAC [lookup_state,SND] >>
-Cases_on `FST (lookup emb l'.first s)` >> srw_tac [][] >>
-Cases_on `l` >> Cases_on `l'.first` >>
-srw_tac [][DOMSUB_COMMUTES]);
+imp_res_tac lookup_state >>
+fsrw_tac [][] >> srw_tac [][] >>
+qmatch_assum_rename_tac `dispose (FST p1).first (SND v) = SOME w` [] >>
+Cases_on `l` >> Cases_on `(FST p1).first` >>
+Cases_on `p1` >> Cases_on `v` >> Cases_on `w` >>
+fsrw_tac [][state_component_equality] >>
+metis_tac [DOMSUB_COMMUTES,DOMSUB_IDEM,DOMSUB_FUPDATE]);
 
 val EmptyList_state = Q.store_thm(
 "EmptyList_state",
-`SND (EmptyList emb l s) = s`,
-srw_tac [][EmptyList_def,lookup_state,UNCURRY] >>
-Cases_on `FST (lookup emb l s) ` >> srw_tac [][]);
-val _ = export_rewrites["EmptyList_state"];
+`(EmptyList emb l s = SOME p) ⇒ (SND p = s)`,
+srw_tac [][EmptyList_def,EXISTS_PROD] >>
+imp_res_tac lookup_state >> fsrw_tac [][]);
 
 val dispose_store = Q.store_thm(
 "dispose_store",
-`s.store \\ ptr_to_num p = (SND (dispose p s)).store \\ ptr_to_num p`,
-Cases_on `p` >> srw_tac [][]);
+`(dispose p s = SOME x) ⇒ ((SND x).store \\ ptr_to_num p = s.store \\ ptr_to_num p)`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val dispose_cell_type = Q.store_thm(
 "dispose_cell_type",
-`(SND (dispose p s)).cell_type = s.cell_type`,
-Cases_on `p` >> srw_tac [][]);
+`(dispose p s = SOME x) ⇒ ((SND x).cell_type = s.cell_type)`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val lookup_dispose = Q.store_thm(
 "lookup_dispose",
-`raw_lookup emb p2 (SND (dispose p1 s)) = (if ptr_to_num p1 = ptr_to_num p2 then NONE else (FST (raw_lookup emb p2 s)), (SND (dispose p1 s)))`,
-Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
-fsrw_tac [][DOMSUB_FLOOKUP_THM] >>
-srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
+`(dispose p1 s = SOME x) ⇒
+ (raw_lookup emb p2 (SND x) =
+  if ptr_to_num p1 = ptr_to_num p2 then NONE
+  else OPTION_MAP (I ## K (SND x)) (raw_lookup emb p2 s))`,
+Cases_on `p1` >> Cases_on `p2` >> ntac 2 (srw_tac [][]) >>
+srw_tac [][DOMSUB_FLOOKUP_THM] >>
+srw_tac [][FLOOKUP_DEF] >>
+srw_tac [][] >>
+qmatch_abbrev_tac `OPTION_BIND x y = z` >>
+Cases_on `x` >> srw_tac [][] >>
+unabbrev_all_tac >> srw_tac [][]);
 
 val lookup_fails = Q.store_thm(
 "lookup_fails",
-`(FST (raw_lookup emb p s) = NONE) ⇔ (∀v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ⇒ (s.cell_type (ptr_to_num p) = emb.type) ⇒ (emb.project v = NONE))`,
-Cases_on `p` >> srw_tac [][FLOOKUP_DEF] >> srw_tac [][]);
+`(raw_lookup emb p s = NONE) ⇔ (∀v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ⇒ (s.cell_type (ptr_to_num p) = emb.type) ⇒ (emb.project v = NONE))`,
+Cases_on `p` >> srw_tac [][FLOOKUP_DEF] >> srw_tac [][EQ_IMP_THM] >> srw_tac [][GSYM IMP_DISJ_THM]);
 
 val lookup_succeeds = Q.store_thm(
 "lookup_succeeds",
-`(FST (raw_lookup emb p s) = SOME a) ⇔ ∃v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ∧ (s.cell_type (ptr_to_num p) = emb.type) ∧ (emb.project v = SOME a)`,
-Cases_on `FST (raw_lookup emb p s)` >- (
+`(raw_lookup emb p s = SOME a) ⇔ ∃v. (FLOOKUP s.store (ptr_to_num p) = SOME v) ∧ (s.cell_type (ptr_to_num p) = emb.type) ∧ (emb.project v = SOME (FST a)) ∧ (SND a = s)`,
+Cases_on `raw_lookup emb p s` >- (
   PROVE_TAC [lookup_fails,NOT_SOME_NONE] ) >>
 Cases_on `FLOOKUP s.store (ptr_to_num p)` >>
-Cases_on `p` >> fsrw_tac [][] >>
-Cases_on `s.cell_type n = emb.type` >> fsrw_tac [][]);
+Cases_on `p` >> Cases_on `a` >> fsrw_tac [][] >>
+Cases_on `s.cell_type n = emb.type` >> fsrw_tac [][] >>
+srw_tac [][EQ_IMP_THM]);
 
 val lookup_assign = Q.store_thm(
 "lookup_assign",
-`is_embed emb ⇒ (FST (raw_lookup emb p (SND (raw_assign emb p a s))) = SOME a)`,
-Cases_on `p` >> srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,is_embed_def] >> PROVE_TAC []);
+`is_embed emb ∧ (raw_assign emb p a s = SOME p1) ∧ (raw_lookup emb p (SND p1) = SOME p2) ⇒ (FST p2 = a)`,
+Cases_on `p` >> srw_tac [][] >>
+fsrw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE,is_embed_def] >>
+srw_tac [][] >> PROVE_TAC [SOME_11]);
 
 val assign_store = Q.store_thm(
 "assign_store",
-`(SND (raw_assign emb p v s)).store \\ ptr_to_num p = s.store \\ ptr_to_num p`,
-Cases_on `p` >> srw_tac [][]);
+`(raw_assign emb p v s = SOME x) ⇒ ((SND x).store \\ ptr_to_num p = s.store \\ ptr_to_num p)`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val assign_cell_type = Q.store_thm(
 "assign_cell_type",
-`(SND (raw_assign emb p v s)).cell_type = ((ptr_to_num p) =+ emb.type) s.cell_type`,
-Cases_on `p` >> srw_tac [][]);
-val _ = export_rewrites["assign_cell_type"];
+`(raw_assign emb p v s = SOME x) ⇒ ((SND x).cell_type = ((ptr_to_num p) =+ emb.type) s.cell_type)`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val lookup_unbound = Q.store_thm(
 "lookup_unbound",
-`ptr_to_num p ∉ FDOM s.store ⇒ (lookup p s = (NONE, s))`,
+`ptr_to_num p ∉ FDOM s.store ⇒ (lookup p s = NONE)`,
 Cases_on `p` >> srw_tac [][FLOOKUP_DEF]);
 
 val HeadOfList_unbound = Q.store_thm(
 "HeadOfList_unbound",
-`ptr_to_num p ∉ FDOM s.store ⇒ (HeadOfList emb p s = (NONE, s))`,
+`ptr_to_num p ∉ FDOM s.store ⇒ (HeadOfList emb p s = NONE)`,
 Cases_on `p` >> srw_tac [][FLOOKUP_DEF,HeadOfList_def]);
 
 val TailOfList_unbound = Q.store_thm(
 "TailOfList_unbound",
-`ptr_to_num p ∉ FDOM s.store ⇒ (TailOfList emb p s = (NONE, s))`,
+`ptr_to_num p ∉ FDOM s.store ⇒ (TailOfList emb p s = NONE)`,
 Cases_on `p` >> srw_tac [][FLOOKUP_DEF,TailOfList_def]);
 
 val type_inductive = Q.store_thm(
@@ -172,9 +181,10 @@ srw_tac [][Once has_type_cases,FLOOKUP_DEF] >> srw_tac [][]);
 
 val assign_comm = Q.store_thm(
 "assign_comm",
-`ptr_to_num p1 ≠ ptr_to_num p2 ⇒
- (SND (raw_assign emb1 p1 v1 (SND (raw_assign emb2 p2 v2 s))) =
-  SND (raw_assign emb2 p2 v2 (SND (raw_assign emb1 p1 v1 s))))`,
+`ptr_to_num p1 ≠ ptr_to_num p2 ∧
+ (raw_assign emb1 p1 v1 s = SOME x1) ∧
+ (raw_assign emb2 p2 v2 s = SOME x2) ⇒
+ (raw_assign emb1 p1 v1 (SND x2) = raw_assign emb2 p2 v2 (SND x1))`,
 Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
 srw_tac [][state_component_equality,FUN_EQ_THM,APPLY_UPDATE_THM] >>
 srw_tac [][GSYM fmap_EQ,INSERT_COMM] >>
@@ -183,16 +193,18 @@ srw_tac [][]);
 
 val free_addr_state = Q.store_thm(
 "free_addr_state",
-`SND (free_addr s) = s`,
-srw_tac [][free_addr_def]);
-val _ = export_rewrites["free_addr_state"];
+`(free_addr s = SOME p) ⇒ (SND p = s)`,
+ntac 2 (srw_tac [][free_addr_def]));
 
 val lookup_assign_neq = Q.store_thm(
 "lookup_assign_neq",
-`ptr_to_num p1 ≠ ptr_to_num p2 ⇒
- (FST (raw_lookup emb1 p1 (SND (raw_assign emb2 p2 v s))) = FST (raw_lookup emb1 p1 s))`,
-Cases_on `FST (raw_lookup emb1 p1 s)` >>
-Cases_on `p2` >> fsrw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,lookup_succeeds,lookup_fails]);
+`ptr_to_num p1 ≠ ptr_to_num p2 ∧
+ (raw_assign emb2 p2 v s = SOME x) ⇒
+ (OPTION_MAP FST (raw_lookup emb1 p1 (SND x)) = OPTION_MAP FST (raw_lookup emb1 p1 s))`,
+Cases_on `raw_lookup emb1 p1 s` >>
+Cases_on `p2` >> srw_tac [][] >>
+fsrw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,lookup_succeeds,lookup_fails] >>
+srw_tac [][EXISTS_PROD]);
 
 val ptr_equality = Q.store_thm(
 "ptr_equality",
@@ -289,29 +301,33 @@ srw_tac [][Once has_type_cases]);
 
 val assign_FDOM = Q.store_thm(
 "assign_FDOM",
-`FDOM (SND (raw_assign emb p v s)).store = (ptr_to_num p) INSERT (FDOM s.store)`,
-Cases_on `p` >> srw_tac [][]);
-val _ = export_rewrites["assign_FDOM"];
+`(raw_assign emb p v s = SOME x) ⇒
+ (FDOM (SND x).store = (ptr_to_num p) INSERT (FDOM s.store))`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val free_addr_neq_0 = Q.store_thm(
 "free_addr_neq_0",
-`ptr_to_num (FST (free_addr s)) ≠ 0`,
-free_addr_elim_tac >> srw_tac [][]);
-val _ = export_rewrites["free_addr_neq_0"];
+`(free_addr s = SOME p) ⇒ ptr_to_num (FST p) ≠ 0`,
+free_addr_elim_tac >> srw_tac [][] >> srw_tac [][]);
 
 val CreateList_wfstate = Q.store_thm(
 "CreateList_wfstate",
-`wfstate s ⇒ wfstate (SND (CreateList emb s))`,
-srw_tac [][CreateList_def,UNCURRY,wfstate_def] >>
-free_addr_elim_tac >> qx_gen_tac `f1` >> fsrw_tac [][] >>
-free_addr_elim_tac >> qx_gen_tac `f2` >> fsrw_tac [][] >>
-strip_tac >> strip_tac >>
-srw_tac [][typed_state_def,APPLY_UPDATE_THM] >- (
-  ntac 5 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM]) )
+`wfstate s ∧ (CreateList emb s = SOME p) ⇒ wfstate (SND p)`,
+reverse (srw_tac [][CreateList_def,UNCURRY,wfstate_def]) >>
+fsrw_tac [][] >- (
+  imp_res_tac assign_FDOM >>
+  imp_res_tac free_addr_state >>
+  imp_res_tac free_addr_neq_0 >>
+  srw_tac [][] ) >>
+ntac 2 (qpat_assum `free_addr X = Y` mp_tac) >>
+free_addr_elim_tac >> qx_gen_tac `f1` >>
+free_addr_elim_tac >> qx_gen_tac `f2` >>
+srw_tac [][typed_state_def] >> fsrw_tac [][] >>
+srw_tac [][] >> fsrw_tac [][] >- (
+  ntac 5 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM]))
 >- (
-  ntac 3 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM]) ) >>
+  ntac 3 (srw_tac [][Once has_type_cases,FLOOKUP_UPDATE,APPLY_UPDATE_THM])) >>
 `f1 ≠ n ∧ f2 ≠ n` by PROVE_TAC [] >>
-srw_tac [][] >>
 qmatch_abbrev_tac `typed_cell (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) {} n` >>
 qsuff_tac `typed_cell ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1; cell_type updated_by x3|>) {} n` >- srw_tac [][] >>
 unabbrev_all_tac >>
@@ -323,36 +339,39 @@ fsrw_tac [][typed_state_def]);
 
 val AddToFrontOfList_wfstate = Q.store_thm(
 "AddToFrontOfList_wfstate",
-`wfstate s ∧ ((a = pnil) ∨ ptr_to_num a ∈ FDOM s.store ∧ (s.cell_type (ptr_to_num a) = emb.type)) ⇒
- wfstate (SND (AddToFrontOfList emb a l s))`,
+`wfstate s ∧ ((a = pnil) ∨ ptr_to_num a ∈ FDOM s.store ∧ (s.cell_type (ptr_to_num a) = emb.type)) ∧
+ (AddToFrontOfList emb a l s = SOME p) ⇒
+  wfstate (SND p)`,
+qmatch_abbrev_tac `A ∧ B ∧ C ⇒ D` >>
+map_every qunabbrev_tac [`A`,`C`,`D`] >>
 fsrw_tac [][AddToFrontOfList_def,UNCURRY] >>
-Cases_on `FST (lookup emb l s)` >> fsrw_tac [][lookup_state,UNCURRY] >>
+Cases_on `lookup emb l s` >> fsrw_tac [][] >>
 Cases_on `l` >> fsrw_tac [][APPLY_UPDATE_THM] >>
-Cases_on `FLOOKUP s.store n` >> fsrw_tac [][] >>
 Cases_on `s.cell_type n = List_type emb.type` >> fsrw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store n = SOME lv` [] >>
 Cases_on `lv` >> fsrw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store n = SOME (List_value a1 a2)` [] >>
-free_addr_elim_tac >> qx_gen_tac `m` >> strip_tac >>
-`m ≠ n` by (fsrw_tac [][FLOOKUP_DEF] >> PROVE_TAC []) >>
-fsrw_tac [][wfstate_def,typed_state_def] >>
-REWRITE_TAC [GSYM AND_IMP_INTRO] >> ntac 2 strip_tac >>
-`n ≠ 0` by (fsrw_tac [][FLOOKUP_DEF] >> PROVE_TAC []) >>
-fsrw_tac [][] >>
-qmatch_abbrev_tac `H ⇒ C` >>
+free_addr_elim_tac >> qx_gen_tac `m` >>
 srw_tac [][] >>
-`typed_cell s {} n` by fsrw_tac [][FLOOKUP_DEF] >>
+`n ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+`m ≠ n` by PROVE_TAC [] >>
+fsrw_tac [][wfstate_def,typed_state_def] >>
+`n ≠ 0` by PROVE_TAC [] >>
+fsrw_tac [][] >>
+qx_gen_tac `p` >>
+qmatch_abbrev_tac `G` >>
+`typed_cell s {} n` by PROVE_TAC [] >>
 pop_assum mp_tac >>
-asm_simp_tac (srw_ss()) [Once has_type_cases] >>
+simp_tac (srw_ss()) [Once has_type_cases] >>
+asm_simp_tac (srw_ss()) [] >>
 asm_simp_tac (srw_ss()) [Once has_type_cases] >>
 strip_tac >>
-Cases_on `a1=n` >- fsrw_tac [][FLOOKUP_DEF] >>
-Cases_on `a2=n` >- fsrw_tac [][FLOOKUP_DEF] >>
+Cases_on `a1=n` >- fsrw_tac [][] >>
+Cases_on `a2=n` >- fsrw_tac [][] >>
 `a1 ≠ 0 ⇒ a1 ∈ FDOM s.store` by PROVE_TAC [IN_INSERT,NOT_IN_EMPTY,typed_cell_bound] >>
 `a2 ≠ 0 ⇒ a2 ∈ FDOM s.store` by PROVE_TAC [IN_INSERT,NOT_IN_EMPTY,typed_cell_bound] >>
 `a1 ≠ m` by PROVE_TAC [] >>
 `a2 ≠ m` by metis_tac [] >>
-`n ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
 `n ≠ ptr_to_num a` by (
   Cases_on `a` >> fsrw_tac [][] >>
   metis_tac [type_inductive] ) >>
@@ -362,8 +381,7 @@ Cases_on `a2=n` >- fsrw_tac [][FLOOKUP_DEF] >>
   qmatch_rename_tac `typed_cell s {} a` [] >>
   Cases_on `a=0` >- srw_tac [][Once has_type_cases] >>
   metis_tac [] ) >>
-Q.UNABBREV_TAC `C` >>
-qx_gen_tac `p` >>
+Q.UNABBREV_TAC `G` >>
 qho_match_abbrev_tac `(p = n) ∨ (p = m) ∨ p ∈ FDOM s.store ⇒ typed_cell ss {} p` >>
 Cases_on `p = n` >- (
   srw_tac [][Abbr`ss`,typed_cell_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
