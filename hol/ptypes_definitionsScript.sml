@@ -2,8 +2,7 @@ open HolKernel bossLib boolLib Parse stringTheory finite_mapTheory state_optionT
 
 val _ = new_theory "ptypes_definitions"
 
-val _ = overload_on("=+", ``λk v f. f |+ (k,v)``);
-val _ = overload_on("=+", ``UPDATE``);
+val _ = inferior_overload_on("=+", ``λk v f. f |+ (k,v)``);
 val _ = overload_on("|+", ``λf kv. f |+ kv``);
 
 val _ = Hol_datatype `ptr = addr of 'a itself => num`;
