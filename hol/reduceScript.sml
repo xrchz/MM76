@@ -79,15 +79,15 @@ val reduce_def = tDefine "reduce"`
     t <- HeadOfListOfTerms M ;
     t' <- lookup t ;
     fs <- OPTION_GUARD (ISR t') (OUTR t').fsymb ;
-    argsofm <-
-      repeat argsofm do
+    (M,argsofm) <-
+      repeat (M,argsofm) do
         argsofm1 <- CreateListOfTempMulteq ;
+        (M,argsofm) <- loop_get ;
         t <- HeadOfListOfTerms M ;
-             TailOfListOfTerms M ;
+        M <- TailOfListOfTerms M ;
         t' <- lookup t ;
         OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
         argsoft <- return (OUTR t').args ;
-        argsofm <- loop_get ;
         (argsoft,argsofm,argsofm1) <-
           while (argsoft,argsofm,argsofm1)
             (do (argsoft,argsofm,argsofm1) <- loop_get ; b <- EmptyListOfTerms argsoft ; return (¬ b) od)
@@ -98,8 +98,8 @@ val reduce_def = tDefine "reduce"`
             argsoft <- TailOfListOfTerms argsoft ;
             loop_put (argsoft,argsofm,argsofm1)
           od ;
-        loop_put argsofm1
-      od (loop_lift (EmptyListOfTerms M)) ;
+        loop_put (M,argsofm1)
+      od do (M,argsofm1) <- loop_get ; loop_lift (EmptyListOfTerms M) od ;
     (argsofm,argsofcp,frontier) <-
       while (argsofm,argsofcp,frontier)
         (do (argsofm,argsofcp,frontier) <- loop_get ; b <- EmptyListOfTempMulteq argsofm ; return (¬ b) od)
@@ -110,7 +110,7 @@ val reduce_def = tDefine "reduce"`
         temp' <- lookup temp ;
         b <- EmptyListOfTerms temp'.S ;
         (newcommonpart,newfrontier) <- loop_lift
-          if b then do
+          if ¬ b then do
             newcommonpart <- HeadOfListOfTerms temp'.S ;
             tmp1 <- CreateListOfTempMulteq ;
             newfrontier <- AddToEndOfListOfTempMulteq temp tmp1 ;
