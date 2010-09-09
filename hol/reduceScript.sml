@@ -28,17 +28,17 @@ val raw_repeat_def = Define`
 val _ = overload_on("while",``λt. raw_while ($, t, I)``);
 val _ = overload_on("repeat",``λt. raw_repeat ($, t, I)``);
 
-val loop_lift = Define`
+val loop_lift_def = Define`
   loop_lift : ('a -> ('b # 'a) option) -> ('c # 'a) -> ('b # ('c # 'a)) option
   m = λ(c,a). OPTION_BIND (m a) (λ(b,a). SOME (b,(c,a)))`;
 val _ = inferior_overload_on("monad_bind", ``STATE_OPTION_BIND o loop_lift``);
 val _ = inferior_overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o loop_lift``);
 
-val loop_get = Define`
+val loop_get_def = Define`
   loop_get : ('c # 'a) -> ('c # ('c # 'a)) option
   (c,a) = SOME (c,(c,a))`;
 
-val loop_put = Define`
+val loop_put_def = Define`
   loop_put : 'c -> ('c # 'a) -> (unit # ('c # 'a)) option
   c (_,a) = SOME ((),(c,a))`;
 
