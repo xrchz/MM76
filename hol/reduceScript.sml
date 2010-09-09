@@ -39,6 +39,32 @@ val loop_put = Define`
   loop_put : 'c -> ('c # 'a) -> (unit # ('c # 'a)) option
   c (_,a) = SOME ((),(c,a))`;
 
+val AddTerm_def = Define`
+  AddTerm t1 argsofm argsofm1 = do
+    b <- EmptyListOfTempMulteq argsofm ;
+    if b then do
+      l1 <- CreateListOfTerms ;
+      l2 <- CreateListOfTerms ;
+      temp <- new (TempMultiequation l1 l2) ;
+      return (argsofm,argsofm1)
+    od else do
+      temp <- HeadOfListOfTempMulteq argsofm ;
+      argsofm <- TailOfListOfTempMulteq argsofm ;
+      t1' <- lookup t1 ;
+      if ISR t1' then do
+        temp' <- lookup temp ;
+        l3 <- AddToEndOfListOfTerms t1 temp'.M ;
+        assign temp (temp' with M := l3)
+      od else do
+        temp' <- lookup temp ;
+        l3 <- AddToEndOfListOfTerms t1 temp'.S ;
+        assign temp (temp' with S := l3)
+      od ;
+      argsofm1 <- AddToEndOfListOfTempMulteq temp argsofm1 ;
+      return (argsofm,argsofm1)
+    od
+  od`;
+
 val reduce_def = Define`
   reduce M = do
     frontier <- CreateListOfTempMulteq ;
@@ -55,15 +81,14 @@ val reduce_def = Define`
       OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
       argsoft <- return (OUTR t').args ;
       argsofm <- loop_get ;
-      while ($, argsoft, SND)
-        (do argsoft <- loop_get ; b <- EmptyListOfTerms argsoft ; return (¬ b) od)
+      while ($, (argsofm,argsoft), SND)
+        (do (argsofm,argsoft) <- loop_get ; b <- EmptyListOfTerms argsoft ; return (¬ b) od)
       do
+        (argsofm,argsoft) <- loop_get ;
         tmp0 <- HeadOfListOfTerms argsoft ;
-        (ARB : Term ptr -> TempMultiequation List ptr -> TempMultiequation List ptr -> state -> (unit # state) option)
-        (* replace ARB with AddTerm *) tmp0 argsofm argsofm1 ;
-        argsoft <- loop_get ;
+        (argsofm,argsofm1) <- AddTerm tmp0 argsofm argsofm1 ;
         argsoft <- TailOfListOfTerms argsoft ;
-        loop_put argsoft
+        loop_put (argsofm,argsoft)
       od ;
       loop_put argsofm1
     od (loop_lift (EmptyListOfTerms M))
