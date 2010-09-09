@@ -68,7 +68,10 @@ val AddTerm_def = Define`
     od
   od`;
 
-val reduce_def = Define`
+val BuildFunctionTerm_def = Define`
+  BuildFunctionTerm fs args = new (INR (FunTerm fs args))`;
+
+val reduce_def = tDefine "reduce"`
   reduce M = do
     frontier <- CreateListOfTempMulteq ;
     argsofcp <- CreateListOfTerms ;
@@ -96,7 +99,30 @@ val reduce_def = Define`
             loop_put (argsoft,argsofm,argsofm1)
           od ;
         loop_put argsofm1
-      od (loop_lift (EmptyListOfTerms M))
-  od`;
+      od (loop_lift (EmptyListOfTerms M)) ;
+    (argsofm,argsofcp,frontier) <-
+      while (argsofm,argsofcp,frontier)
+        (do (argsofm,argsofcp,frontier) <- loop_get ; b <- EmptyListOfTempMulteq argsofm ; return (¬ b) od)
+      do
+        (argsofm,argsofcp,frontier) <- loop_get ;
+        temp <- HeadOfListOfTempMulteq argsofm ;
+        argsofm <- TailOfListOfTempMulteq argsofm ;
+        temp' <- lookup temp ;
+        b <- EmptyListOfTerms temp'.S ;
+        (newcommonpart,newfrontier) <- loop_lift
+          if b then do
+            newcommonpart <- HeadOfListOfTerms temp'.S ;
+            tmp1 <- CreateListOfTempMulteq ;
+            newfrontier <- AddToEndOfListOfTempMulteq temp tmp1 ;
+            return (newcommonpart,newfrontier)
+          od else reduce temp'.M ;
+        argsofcp <- AddToEndOfListOfTerms newcommonpart argsofcp ;
+        frontier <- AppendListsOfTempMulteq frontier newfrontier ;
+        loop_put (argsofm,argsofcp,frontier)
+      od ;
+    commonpart <- BuildFunctionTerm fs argsofcp ;
+    return (commonpart, frontier)
+  od`
+(FAIL_TAC "no proof yet");
 
 val _ = export_theory ()
