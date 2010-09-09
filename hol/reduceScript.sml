@@ -2,28 +2,31 @@ open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs
 
 val _ = new_theory "reduce"
 
-val while_def = Define`
-  while ((inj,prj) : ('a -> 'b) # ('b -> 'a))
+val OPTION_GUARD_def = Define`
+  OPTION_GUARD b x = if b then SOME x else NONE`;
+
+val raw_while_def = Define`
+  raw_while ((inj,prj) : ('a -> 'b) # ('b -> 'c # 'a))
         (guard  : 'b -> (bool # 'b) option)
         (block  : 'b -> (unit # 'b) option)
         s =
-  OPTION_MAP ($, () o prj o SND)
+  OPTION_MAP (prj o SND)
     (WHILE (λx. OPTION_MAP FST x = SOME T)
            (λx. OPTION_BIND x (do block ; guard od o SND))
            (guard (inj s)))`;
 
-val repeat_def = Define`
-  repeat ((inj,prj) : ('a -> 'b) # ('b -> 'a))
+val raw_repeat_def = Define`
+  raw_repeat ((inj,prj) : ('a -> 'b) # ('b -> 'c # 'a))
          (block  : 'b -> (unit # 'b) option)
          (guard  : 'b -> (bool # 'b) option)
          s =
-  OPTION_MAP ($, () o prj o SND)
+  OPTION_MAP (prj o SND)
     (WHILE (λx. OPTION_MAP FST x = SOME F)
            (λx. OPTION_BIND x (do block ; guard od o SND))
            (SOME (F, inj s)))`;
 
-val OPTION_GUARD_def = Define`
-  OPTION_GUARD b x = if b then SOME x else NONE`;
+val _ = overload_on("while",``λt. raw_while ($, t, I)``);
+val _ = overload_on("repeat",``λt. raw_repeat ($, t, I)``);
 
 val loop_lift = Define`
   loop_lift : ('a -> ('b # 'a) option) -> ('c # 'a) -> ('b # ('c # 'a)) option
@@ -73,25 +76,27 @@ val reduce_def = Define`
     t <- HeadOfListOfTerms M ;
     t' <- lookup t ;
     fs <- OPTION_GUARD (ISR t') (OUTR t').fsymb ;
-    repeat ($, argsofm, SND) do
-      argsofm1 <- CreateListOfTempMulteq ;
-      t <- HeadOfListOfTerms M ;
-           TailOfListOfTerms M ;
-      t' <- lookup t ;
-      OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
-      argsoft <- return (OUTR t').args ;
-      argsofm <- loop_get ;
-      while ($, (argsofm,argsoft), SND)
-        (do (argsofm,argsoft) <- loop_get ; b <- EmptyListOfTerms argsoft ; return (¬ b) od)
-      do
-        (argsofm,argsoft) <- loop_get ;
-        tmp0 <- HeadOfListOfTerms argsoft ;
-        (argsofm,argsofm1) <- AddTerm tmp0 argsofm argsofm1 ;
-        argsoft <- TailOfListOfTerms argsoft ;
-        loop_put (argsofm,argsoft)
-      od ;
-      loop_put argsofm1
-    od (loop_lift (EmptyListOfTerms M))
+    argsofm <-
+      repeat argsofm do
+        argsofm1 <- CreateListOfTempMulteq ;
+        t <- HeadOfListOfTerms M ;
+             TailOfListOfTerms M ;
+        t' <- lookup t ;
+        OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
+        argsoft <- return (OUTR t').args ;
+        argsofm <- loop_get ;
+        (argsoft,argsofm,argsofm1) <-
+          while (argsoft,argsofm,argsofm1)
+            (do (argsoft,argsofm,argsofm1) <- loop_get ; b <- EmptyListOfTerms argsoft ; return (¬ b) od)
+          do
+            (argsoft,argsofm,argsofm1) <- loop_get ;
+            tmp0 <- HeadOfListOfTerms argsoft ;
+            (argsofm,argsofm1) <- AddTerm tmp0 argsofm argsofm1 ;
+            argsoft <- TailOfListOfTerms argsoft ;
+            loop_put (argsoft,argsofm,argsofm1)
+          od ;
+        loop_put argsofm1
+      od (loop_lift (EmptyListOfTerms M))
   od`;
 
 val _ = export_theory ()
