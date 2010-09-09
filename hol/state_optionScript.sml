@@ -25,10 +25,10 @@ val STATE_OPTION_LIFT_def = Define`
   STATE_OPTION_LIFT : 'b option -> ('a,'b) monad
   m s = OPTION_BIND m (λa. SOME (a,s))`;
 
+val _ = overload_on("monad_bind", ``STATE_OPTION_BIND o STATE_OPTION_LIFT``);
+val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o STATE_OPTION_LIFT``);
 val _ = overload_on("monad_bind", ``STATE_OPTION_BIND``);
 val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND``);
 val _ = overload_on("return", ``STATE_OPTION_UNIT``);
-val _ = overload_on("monad_bind",``STATE_OPTION_BIND o STATE_OPTION_LIFT``);
-val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o STATE_OPTION_LIFT``);
 
 val _ = export_theory ()
