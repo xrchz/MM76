@@ -1,4 +1,4 @@
-open HolKernel boolLib Parse bossLib
+open HolKernel boolLib Parse bossLib pairTheory lcsymtacs
 
 val _ = new_theory "state_option"
 
@@ -24,6 +24,26 @@ val STATE_OPTION_IGNORE_BIND_def = Define`
 val STATE_OPTION_LIFT_def = Define`
   STATE_OPTION_LIFT : 'b option -> ('a,'b) monad
   m s = OPTION_BIND m (λa. SOME (a,s))`;
+
+val STATE_OPTION_BIND_cong = Q.store_thm(
+"STATE_OPTION_BIND_cong",
+`(∀s. m s = m' s) ∧
+ (∀s v s'. (m' s = SOME (v,s')) ⇒ (f v s' = f' v s'))
+ ⇒ (STATE_OPTION_BIND m f = STATE_OPTION_BIND m' f')`,
+strip_tac >> fsrw_tac [][FUN_EQ_THM] >> qx_gen_tac `s'` >>
+Cases_on `m' s'` >> srw_tac [][STATE_OPTION_BIND_def,UNCURRY] >>
+first_x_assum match_mp_tac >> qexists_tac `s'` >> srw_tac [][]);
+val _ = DefnBase.export_cong "STATE_OPTION_BIND_cong";
+
+val STATE_OPTION_IGNORE_BIND_cong = Q.store_thm(
+"STATE_OPTION_IGNORE_BIND_cong",
+`(m1 = m1') ∧
+ (∀s s'. (OPTION_MAP SND (m1' s) = SOME s') ⇒ (m2 s' = m2' s'))
+ ⇒ (STATE_OPTION_IGNORE_BIND m1 m2 = STATE_OPTION_IGNORE_BIND m1' m2')`,
+strip_tac >> fsrw_tac [][FUN_EQ_THM] >> qx_gen_tac `s` >>
+Cases_on `m1' s` >> srw_tac [][STATE_OPTION_IGNORE_BIND_def] >>
+first_x_assum match_mp_tac >> qexists_tac `s` >> srw_tac [][]);
+val _ = DefnBase.export_cong "STATE_OPTION_IGNORE_BIND_cong";
 
 val _ = overload_on("monad_bind", ``STATE_OPTION_BIND o STATE_OPTION_LIFT``);
 val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o STATE_OPTION_LIFT``);

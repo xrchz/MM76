@@ -34,6 +34,27 @@ val loop_lift_def = Define`
 val _ = inferior_overload_on("monad_bind", ``STATE_OPTION_BIND o loop_lift``);
 val _ = inferior_overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o loop_lift``);
 
+val STATE_OPTION_BIND_o_loop_lift_cong = Q.store_thm(
+"STATE_OPTION_BIND_o_loop_lift_cong",
+`(m = m') ∧ (∀s a. (OPTION_MAP FST (m' s) = SOME a) ⇒ (f a = f' a))
+ ⇒ ((STATE_OPTION_BIND o loop_lift) m f = (STATE_OPTION_BIND o loop_lift) m' f')`,
+strip_tac >> fsrw_tac [][FUN_EQ_THM] >> qx_gen_tac `s'` >>
+Cases_on `m' (SND s')` >> srw_tac [][state_optionTheory.STATE_OPTION_BIND_def,loop_lift_def,pairTheory.UNCURRY] >>
+first_x_assum match_mp_tac >> qexists_tac `SND s'` >> srw_tac [][]);
+val _ = DefnBase.export_cong "STATE_OPTION_BIND_o_loop_lift_cong";
+
+val STATE_OPTION_IGNORE_BIND_o_loop_lift_cong = Q.store_thm(
+"STATE_OPTION_IGNORE_BIND_o_loop_lift_cong",
+`(m1 = m1') ∧ (∀s s' a. (OPTION_MAP SND (m1' s) = SOME s') ⇒ (m2 (a,s') = m2' (a,s')))
+ ⇒ ((STATE_OPTION_IGNORE_BIND o loop_lift) m1 m2 = (STATE_OPTION_IGNORE_BIND o loop_lift) m1' m2')`,
+strip_tac >> fsrw_tac [][FUN_EQ_THM] >> qx_gen_tac `s` >>
+Cases_on `m1' (SND s)` >> Cases_on `s` >> fsrw_tac [][] >>
+srw_tac [][state_optionTheory.STATE_OPTION_IGNORE_BIND_def,loop_lift_def] >>
+qmatch_assum_rename_tac `m1' s2 = SOME x` [] >>
+Cases_on `x` >> srw_tac [][] >>
+first_x_assum match_mp_tac >> qexists_tac `s2` >> srw_tac [][]);
+val _ = DefnBase.export_cong "STATE_OPTION_IGNORE_BIND_o_loop_lift_cong";
+
 val loop_get_def = Define`
   loop_get : ('c # 'a) -> ('c # ('c # 'a)) option
   (c,a) = SOME (c,(c,a))`;
@@ -71,7 +92,40 @@ val AddTerm_def = Define`
 val BuildFunctionTerm_def = Define`
   BuildFunctionTerm fs args = new (INR (FunTerm fs args))`;
 
-val reduce_def = tDefine "reduce"`
+val _ = xDefine "foo"`
+  foo M =
+  STATE_OPTION_BIND (STATE_OPTION_UNIT F)
+  (λb. STATE_OPTION_IGNORE_BIND
+       (if b then foo M else STATE_OPTION_UNIT ())
+       (STATE_OPTION_UNIT ()))`;
+
+val _ = xDefine "mini_rec"`
+  mini_rec M = do
+    b <- EmptyListOfTerms M ;
+    n <- if ¬ b then do
+      M <- TailOfListOfTerms M ;
+      mini_rec M
+    od else return 1 ;
+    return 1
+  od`;
+
+val _ = xDefine "mini_reduce"`
+  mini_reduce M = do
+    while 1
+      (do n <- loop_get ; return (n = 2) od)
+    do
+      b <- EmptyListOfTerms M ;
+      n <- loop_lift
+        if ¬ b then do
+          M <- TailOfListOfTerms M ;
+          mini_reduce M
+        od else return 2 ;
+      loop_put n
+    od ;
+  return 2
+  od`
+
+val reduce_def = xDefine "reduce"`
   reduce M = do
     frontier <- CreateListOfTempMulteq ;
     argsofcp <- CreateListOfTerms ;
