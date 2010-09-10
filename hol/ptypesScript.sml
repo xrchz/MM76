@@ -483,4 +483,124 @@ srw_tac [][EXISTS_PROD] >>
 srw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE] >>
 fsrw_tac [][FLOOKUP_DEF]);
 
+val AddToFrontOfList_CONS = Q.store_thm(
+"AddToFrontOfList_CONS",
+`is_embed emb ∧ typed_state s0 ∧
+ list_of_List emb s0 l0 ls ∧
+ (OPTION_MAP FST (raw_lookup emb e s0) = SOME e') ⇒
+ ∃l s. (AddToFrontOfList emb e l0 s0 = SOME (l,s)) ∧
+       list_of_List emb s l (CONS e' ls)`,
+simp_tac (srw_ss()) [AddToFrontOfList_def,UNCURRY,list_of_List_def] >>
+Cases_on `lookup emb l0 s0` >> simp_tac (srw_ss()) [] >>
+Cases_on `raw_lookup emb e s0` >> simp_tac (srw_ss()) [] >>
+imp_res_tac lookup_state >>
+srw_tac [DNF_ss][] >>
+qmatch_assum_rename_tac `lookup emb l0 (SND p) = SOME p` [] >>
+Cases_on `p` >> fsrw_tac [][] >> srw_tac [][] >>
+qmatch_assum_rename_tac `raw_lookup emb e (SND p) = SOME p` [] >>
+Cases_on `p` >> fsrw_tac [][] >>
+free_addr_elim_tac >>
+qx_gen_tac `n` >> strip_tac >>
+qmatch_assum_rename_tac `n ∉ FDOM s.store` [] >>
+srw_tac [][] >>
+qho_match_abbrev_tac `?x z. (assign emb l0 lv ss = SOME x) ∧ (lookup emb l0 (SND x) = SOME z) ∧ X x z` >>
+`?x. assign emb l0 lv ss = SOME x` by (
+  Cases_on `l0` >> srw_tac [][] ) >>
+srw_tac [][] >>
+`lookup emb l0 (SND x) = SOME (lv,SND x)` by (
+  match_mp_tac (GEN_ALL lookup_assign) >>
+  qexists_tac `ss` >> srw_tac [][is_embed_List] ) >>
+srw_tac [][Abbr`X`] >>
+srw_tac [DNF_ss][Once list_of_AuxList_cases,UNCURRY] >>
+`lv.first ≠ lv.last` by (
+  srw_tac [][Abbr`lv`] >>
+  srw_tac [][GSYM ptr_equality] >>
+  qmatch_rename_tac `n ≠ ptr_to_num l.last` [] >>
+  Cases_on `ptr_to_num l.last ∈ FDOM s.store` >- PROVE_TAC [] >>
+  qsuff_tac `ptr_to_num l.last = 0` >- srw_tac [][] >>
+  match_mp_tac (GEN_ALL reachTheory.cell_reach_typed_state_unbound_eq_0) >>
+  map_every qexists_tac [`s`,`ptr_to_num l0`] >>
+  srw_tac [][Once RTC_CASES2,reachTheory.cell_reach1_def] >- (
+    fsrw_tac [][lookup_succeeds] >>
+    Cases_on `v` >> fsrw_tac [][] >>
+    srw_tac [][reachTheory.reach1_cases] >>
+    PROVE_TAC [RTC_RULES] ) >>
+  fsrw_tac [][lookup_succeeds,FLOOKUP_DEF] >>
+  PROVE_TAC [] ) >>
+`ptr_to_num l0 ≠ ptr_to_num lv.first` by (
+  spose_not_then strip_assume_tac >>
+  fsrw_tac [][lookup_succeeds,FLOOKUP_DEF,Abbr`lv`] ) >>
+imp_res_tac assign_cell_type >>
+srw_tac [DNF_ss][lookup_succeeds,APPLY_UPDATE_THM] >>
+imp_res_tac assign_store >>
+`FLOOKUP (SND x).store (ptr_to_num lv.first) =
+ FLOOKUP ((SND x).store \\ ptr_to_num l0) (ptr_to_num lv.first)` by
+   srw_tac [][DOMSUB_FLOOKUP_THM] >>
+srw_tac [][Abbr`ss`] >>
+pop_assum (K ALL_TAC) >>
+srw_tac [][DOMSUB_FLOOKUP_THM] >>
+srw_tac [][Abbr`lv`,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+srw_tac [][EXISTS_PROD] >>
+`ptr_to_num l0 ≠ ptr_to_num e` by (
+  spose_not_then strip_assume_tac >>
+  fsrw_tac [][lookup_succeeds] >>
+  fsrw_tac [][type_inductive] ) >>
+`FLOOKUP (SND x).store (ptr_to_num e) =
+ FLOOKUP ((SND x).store \\ ptr_to_num l0) (ptr_to_num e)` by
+   srw_tac [][DOMSUB_FLOOKUP_THM] >>
+srw_tac [][] >>
+srw_tac [][DOMSUB_FLOOKUP_THM] >>
+`ptr_to_num e ≠ n` by (fsrw_tac [][lookup_succeeds,FLOOKUP_DEF] >> PROVE_TAC []) >>
+srw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+fsrw_tac [][lookup_succeeds] >>
+
+Cases_on `l0` >> fsrw_tac [][APPLY_UPDATE_THM] >>
+srw_tac [][] >> fsrw_tac [][FLOOKUP_UPDATE] >>
+qpat_assum `n' ≠ ptr_to_num e` assume_tac >>
+fsrw_tac [][DOMSUB_FLOOKUP_THM,FLOOKUP_UPDATE] >>
+srw_tac [][] >> fsrw_tac [][] >>
+fsrw_tac [][GSYM ptr_equality] >>
+srw_tac [][]
+
+need some list_of_AuxList_assign theorems
+specifically:
+  - list_of_AuxList_assign_unbound, and
+  - list_of_AuxList_assign_unreachable
+and also
+  - list_of_AuxList implies reachability only goes one way down the list
+    (or something that says the head of the list is unreachable from the head of the tail)
+
+`typed_state ss` by (
+  fsrw_tac [][Abbr`ss`,typed_state_def] >>
+  reverse (srw_tac [][]) >- (
+    (has_type_assign_unbound |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
+    srw_tac [][] ) >>
+  srw_tac [][typed_cell_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+  (has_type_assign_cached_unbound |> CONJUNCT1 |> MP_CANON |> MATCH_MP_TAC) >>
+  srw_tac [][Once has_type_cases] >|[
+    fsrw_tac [][lookup_succeeds,FLOOKUP_DEF,has_type_INSERT_cached],
+    fsrw_tac [][lookup_succeeds],
+    qmatch_rename_tac `typed_cell s {n} (ptr_to_num l.first)` [] >>
+    Cases_on `ptr_to_num l.first ∈ FDOM s.store` >- srw_tac [][has_type_INSERT_cached] >>
+    qsuff_tac `ptr_to_num l.first = 0` >- srw_tac [][typed_cell_def,FLOOKUP_DEF] >>
+    match_mp_tac (GEN_ALL reachTheory.cell_reach_typed_state_unbound_eq_0) >>
+    map_every qexists_tac [`s`,`ptr_to_num l0`] >>
+    srw_tac [][typed_state_def,Once RTC_CASES2,reachTheory.cell_reach1_def] >- (
+      fsrw_tac [][lookup_succeeds] >>
+      Cases_on `v` >> fsrw_tac [][] >>
+      srw_tac [][reachTheory.reach1_cases] >>
+      PROVE_TAC [RTC_RULES] ) >>
+    fsrw_tac [][lookup_succeeds,FLOOKUP_DEF] >>
+    PROVE_TAC [],
+    first_x_assum (qspec_then `ptr_to_num l0` mp_tac) >>
+    simp_tac (srw_ss()) [typed_cell_def] >>
+    fsrw_tac [][lookup_succeeds] >>
+    `ptr_to_num l0 ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+    fsrw_tac [][] >>
+    srw_tac [][Once has_type_cases] >>
+    fsrw_tac [][] >> srw_tac [][] >>
+    first_x_assum match_mp_tac >>
+    fsrw_tac [][]
+  ]) >>
+
 val _ = export_theory ()
