@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory lcsymtacs
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory lcsymtacs
 
 val _ = new_theory "ptypes"
 
@@ -462,5 +462,25 @@ srw_tac [][FLOOKUP_DEF] >- (
   simp_tac (srw_ss()) [typed_cell_def,FLOOKUP_DEF] >>
   srw_tac [][] ) >>
 PROVE_TAC []);
+
+val list_of_AuxList_assign_unbound = Q.store_thm(
+"list_of_AuxList_assign_unbound",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        m ∉ FDOM s.store ⇒
+        list_of_AuxList emb (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) l p ls`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- srw_tac [][Once list_of_AuxList_cases] >>
+rpt strip_tac >>
+srw_tac [][Once list_of_AuxList_cases,UNCURRY] >>
+fsrw_tac [][UNCURRY] >>
+`ptr_to_num p ≠ m` by (
+  fsrw_tac [][FLOOKUP_DEF,lookup_succeeds] >>
+  PROVE_TAC [] ) >>
+srw_tac [][lookup_succeeds,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+srw_tac [DNF_ss][] >>
+fsrw_tac [][lookup_succeeds] >> srw_tac [][] >>
+srw_tac [][EXISTS_PROD] >>
+srw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE] >>
+fsrw_tac [][FLOOKUP_DEF]);
 
 val _ = export_theory ()
