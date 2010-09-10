@@ -139,7 +139,7 @@ srw_tac [][EQ_IMP_THM]);
 
 val lookup_assign = Q.store_thm(
 "lookup_assign",
-`is_embed emb ∧ (raw_assign emb p a s = SOME p1) ∧ (raw_lookup emb p (SND p1) = SOME p2) ⇒ (FST p2 = a)`,
+`is_embed emb ∧ (raw_assign emb p a s = SOME x) ⇒ (raw_lookup emb p (SND x) = SOME (a,SND x))`,
 Cases_on `p` >> srw_tac [][] >>
 fsrw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE,is_embed_def] >>
 srw_tac [][] >> PROVE_TAC [SOME_11]);
