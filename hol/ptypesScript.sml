@@ -525,6 +525,90 @@ pop_assum mp_tac >>
  |> match_mp_tac) >>
 srw_tac [][RINTER]);
 
+val tailR1_def = Define`
+  tailR1 s l n1 n2 = n2 ≠ ptr_to_num l ∧ ∃h. FLOOKUP s n2 = SOME (AuxList_value h n1)`;
+val _ = overload_on("tailR", ``λs last. RTC (tailR1 s last)``);
+
+val list_of_AuxList_tailR_type = Q.store_thm(
+"list_of_AuxList_tailR_type",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        wfstate s ∧ (s.cell_type (ptr_to_num p) = AuxList_type emb.type) ∧
+        tailR s.store l m (ptr_to_num p) ∧ m ≠ 0 ⇒
+        (s.cell_type m = AuxList_type emb.type)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- srw_tac [][Once RTC_CASES2,tailR1_def] >>
+srw_tac [][UNCURRY] >>
+fsrw_tac [][] >> srw_tac [][] >>
+qpat_assum `tailR ss l m pp` mp_tac >>
+srw_tac [][Once RTC_CASES2,tailR1_def] >- srw_tac [][] >>
+fsrw_tac [][lookup_succeeds] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+fsrw_tac [][] >>
+`typed_cell s {} (ptr_to_num p)` by
+  fsrw_tac [][FLOOKUP_DEF,wfstate_def,typed_state_def] >>
+pop_assum mp_tac >> asm_simp_tac (srw_ss()) [typed_cell_def] >>
+qmatch_assum_rename_tac `FLOOKUP (SND x).store h = SOME v` [] >>
+Cases_on `x` >> fsrw_tac [][] >>
+srw_tac [][Once has_type_cases] >>
+qpat_assum `tailR ss l m u` mp_tac >>
+srw_tac [][Once RTC_CASES2,tailR1_def] >-
+  (first_x_assum match_mp_tac >> first_assum ACCEPT_TAC) >>
+fsrw_tac [][wfstate_def,FLOOKUP_DEF] >>
+first_x_assum match_mp_tac >>
+first_x_assum match_mp_tac >>
+PROVE_TAC []);
+
+val headR_def = Define`
+  headR s l n1 n2 = ∃a t. tailR s l a n2 ∧ (FLOOKUP s a = SOME (AuxList_value n1 t))`;
+
+val list_of_AuxList_headR_type = Q.store_thm(
+"list_of_AuxList_headR_type",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        wfstate s ∧ (s.cell_type (ptr_to_num p) = AuxList_type emb.type) ∧
+        headR s.store l m (ptr_to_num p) ∧ m ≠ 0 ⇒
+        (s.cell_type m = emb.type)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- (
+  srw_tac [][Once RTC_CASES2,headR_def,tailR1_def] >>
+  fsrw_tac [][FLOOKUP_DEF,wfstate_def,typed_state_def,typed_cell_def] >>
+  res_tac >> pop_assum mp_tac >>
+  simp_tac (srw_ss()) [Once has_type_cases] >>
+  srw_tac [][] ) >>
+srw_tac [][UNCURRY] >>
+fsrw_tac [][] >> srw_tac [][] >>
+qpat_assum `headR ss l m pp` mp_tac >>
+srw_tac [][headR_def,Once RTC_CASES2,tailR1_def] >- (
+  fsrw_tac [][lookup_succeeds,FLOOKUP_DEF,wfstate_def,typed_state_def,typed_cell_def] >>
+  res_tac >> pop_assum mp_tac >>
+  simp_tac (srw_ss()) [Once has_type_cases] >>
+  srw_tac [][] ) >>
+fsrw_tac [][lookup_succeeds] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+fsrw_tac [][] >>
+`typed_cell s {} (ptr_to_num p)` by
+  fsrw_tac [][FLOOKUP_DEF,wfstate_def,typed_state_def] >>
+pop_assum mp_tac >> asm_simp_tac (srw_ss()) [typed_cell_def] >>
+qmatch_assum_rename_tac `FLOOKUP (SND x).store h = SOME v` [] >>
+Cases_on `x` >> fsrw_tac [][] >>
+srw_tac [][Once has_type_cases] >>
+qpat_assum `tailR ss l a u` mp_tac >>
+srw_tac [][Once RTC_CASES2,tailR1_def] >- (
+  first_x_assum match_mp_tac >>
+  fsrw_tac [][FLOOKUP_DEF,wfstate_def] >>
+  `a ≠ 0` by PROVE_TAC [] >>
+  fsrw_tac [][] >>
+  srw_tac [][headR_def,FLOOKUP_DEF] >>
+  srw_tac [][Once RTC_CASES2,tailR1_def,FLOOKUP_DEF] >>
+  PROVE_TAC [] ) >>
+fsrw_tac [][wfstate_def,FLOOKUP_DEF] >>
+first_x_assum match_mp_tac >>
+conj_tac >- (
+  first_x_assum match_mp_tac >>
+  PROVE_TAC [] ) >>
+srw_tac [][headR_def,FLOOKUP_DEF] >>
+srw_tac [][Once RTC_CASES2,tailR1_def,FLOOKUP_DEF] >>
+PROVE_TAC [] );
+
 val AddToFrontOfList_CONS = Q.store_thm(
 "AddToFrontOfList_CONS",
 `is_embed emb ∧ typed_state s0 ∧
