@@ -725,6 +725,40 @@ val assign_succeeds = Q.store_thm(
 `∃s'. (raw_assign emb p v s = SOME ((),s'))`,
 Cases_on `p` >> srw_tac [][]);
 
+val list_of_AuxList_SNOC = Q.store_thm(
+"list_of_AuxList_SNOC",
+`∀p ls. list_of_AuxList emb s l1 p ls ⇒
+        (OPTION_MAP FST (lookup emb l1 s) = SOME (AuxList h l2)) ∧
+        ¬ tailR s.store l1 (ptr_to_num l2) (ptr_to_num p) ∧
+        (OPTION_MAP FST (raw_lookup emb h s) = SOME e) ⇒
+        list_of_AuxList emb s l2 p (SNOC e ls)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- (
+  srw_tac [DNF_ss][Once list_of_AuxList_cases,UNCURRY] >>
+  fsrw_tac [][lookup_succeeds] >>
+  srw_tac [DNF_ss][EXISTS_PROD] >>
+  qpat_assum `AuxList h l2 = X` (assume_tac o SYM) >>
+  fsrw_tac [][] >>
+  srw_tac [][Once list_of_AuxList_cases] >>
+  srw_tac [][GSYM ptr_equality] >>
+  PROVE_TAC [RTC_RULES]) >>
+rpt strip_tac >>
+fsrw_tac [][UNCURRY] >> srw_tac [][] >>
+fsrw_tac [][] >> srw_tac [][] >>
+srw_tac [DNF_ss][Once list_of_AuxList_cases,UNCURRY] >- (
+  srw_tac [][GSYM ptr_equality] >>
+  PROVE_TAC [RTC_RULES] ) >>
+fsrw_tac [][listTheory.SNOC_APPEND] >>
+first_x_assum match_mp_tac >>
+qmatch_assum_rename_tac `lookup emb p s = SOME l` [] >>
+`tailR1 s.store l1 (ptr_to_num (FST l).tail) (ptr_to_num p)` by (
+  srw_tac [][tailR1_def,ptr_equality] >>
+  fsrw_tac [][lookup_succeeds] >>
+  Cases_on `v` >> fsrw_tac [][] >>
+  Cases_on `l` >> fsrw_tac [][] >>
+  srw_tac [][] ) >>
+PROVE_TAC [RTC_RULES_RIGHT1]);
+
 val AddToEndOfList_SNOC = Q.store_thm(
 "AddToEndOfList_SNOC",
 `typed_state s0 ∧ is_embed emb ∧
