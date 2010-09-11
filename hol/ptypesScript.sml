@@ -483,48 +483,6 @@ srw_tac [][EXISTS_PROD] >>
 srw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE] >>
 fsrw_tac [][FLOOKUP_DEF]);
 
-val list_of_AuxList_assign_unreachable = Q.store_thm(
-"list_of_AuxList_assign_unreachable",
-`∀p ls. list_of_AuxList emb s l p ls ⇒
-        ¬ (cell_reach1 s.store RINTER (λx y. y ≠ ptr_to_num l))^* m (ptr_to_num p) ⇒
-        list_of_AuxList emb (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) l p ls`,
-ho_match_mp_tac list_of_AuxList_ind >>
-conj_tac >- srw_tac [][Once list_of_AuxList_cases] >>
-rpt strip_tac >>
-srw_tac [][Once list_of_AuxList_cases] >>
-fsrw_tac [][UNCURRY] >> srw_tac [][] >>
-fsrw_tac [][] >> srw_tac [][] >>
-`ptr_to_num p ≠ m` by PROVE_TAC [RTC_RULES] >>
-srw_tac [DNF_ss][EXISTS_PROD,lookup_succeeds,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
-fsrw_tac [][lookup_succeeds] >>
-qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME v` [] >>
-qmatch_assum_rename_tac `project_AuxList v = SOME (FST x)` [] >>
-Cases_on `v` >> fsrw_tac [][] >>
-qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME (AuxList_value nh nt)` [] >>
-`(cell_reach1 s.store RINTER (\x y. y ≠ ptr_to_num l))^* nh (ptr_to_num p)` by (
-  srw_tac [][Once RTC_CASES2,RINTER,ptr_equality,cell_reach1_def,reach1_cases] >>
-  PROVE_TAC [RTC_RULES] ) >>
-`m ≠ nh` by PROVE_TAC [] >>
-qpat_assum `X = FST x` (assume_tac o SYM) >>
-qpat_assum `SND x = s` assume_tac >>
-fsrw_tac [][] >>
-first_x_assum match_mp_tac >>
-`(cell_reach1 s.store RINTER (\x y. y ≠ ptr_to_num l)) nt (ptr_to_num p)` by (
-  srw_tac [][RINTER,cell_reach1_def,reach1_cases,ptr_equality] ) >>
-PROVE_TAC [RTC_RULES_RIGHT1]);
-
-val RCOMPL_RTC_RINTER_lemma = Q.store_thm(
-"RCOMPL_RTC_RINTER_lemma",
-`~R1^* x y ⇒ ~(R1 RINTER R2)^* x y`,
-spose_not_then strip_assume_tac >>
-qpat_assum `~X` mp_tac >> srw_tac [][] >>
-pop_assum mp_tac >>
-(RTC_lifts_reflexive_transitive_relations
- |> Q.GEN `f` |> Q.ISPEC `I`
- |> SIMP_RULE (srw_ss()) []
- |> match_mp_tac) >>
-srw_tac [][RINTER]);
-
 val tailR1_def = Define`
   tailR1 s l n1 n2 = n2 ≠ ptr_to_num l ∧ ∃h. FLOOKUP s n2 = SOME (AuxList_value h n1)`;
 val _ = overload_on("tailR", ``λs last. RTC (tailR1 s last)``);
@@ -608,6 +566,36 @@ conj_tac >- (
 srw_tac [][headR_def,FLOOKUP_DEF] >>
 srw_tac [][Once RTC_CASES2,tailR1_def,FLOOKUP_DEF] >>
 PROVE_TAC [] );
+
+val list_of_AuxList_assign_unreachable = Q.store_thm(
+"list_of_AuxList_assign_unreachable",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        ¬ headR s.store l m (ptr_to_num p) ∧ ¬ tailR s.store l m (ptr_to_num p) ⇒
+        list_of_AuxList emb (s with <|store updated_by (m =+ w); cell_type updated_by (m =+ a)|>) l p ls`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- srw_tac [][Once list_of_AuxList_cases] >>
+rpt strip_tac >>
+srw_tac [][Once list_of_AuxList_cases] >>
+fsrw_tac [][UNCURRY] >> srw_tac [][] >>
+fsrw_tac [][] >> srw_tac [][] >>
+`ptr_to_num p ≠ m` by PROVE_TAC [RTC_RULES] >>
+srw_tac [DNF_ss][EXISTS_PROD,lookup_succeeds,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+fsrw_tac [][lookup_succeeds] >>
+qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME v` [] >>
+qmatch_assum_rename_tac `project_AuxList v = SOME (FST x)` [] >>
+Cases_on `v` >> fsrw_tac [][] >>
+qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME (AuxList_value nh nt)` [] >>
+`headR s.store l nh (ptr_to_num p)` by (
+  srw_tac [][Once RTC_CASES2,headR_def,tailR1_def,ptr_equality,cell_reach1_def,reach1_cases] >>
+  PROVE_TAC [] ) >>
+`m ≠ nh` by PROVE_TAC [] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+qpat_assum `SND x = s` assume_tac >>
+fsrw_tac [][] >>
+first_x_assum match_mp_tac >>
+`tailR1 s.store l nt (ptr_to_num p)` by (
+  srw_tac [][tailR1_def,reach1_cases,ptr_equality] ) >>
+PROVE_TAC [headR_def,RTC_RULES_RIGHT1]);
 
 val AddToFrontOfList_CONS = Q.store_thm(
 "AddToFrontOfList_CONS",
