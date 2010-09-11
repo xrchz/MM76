@@ -720,4 +720,65 @@ first_x_assum match_mp_tac >>
 fsrw_tac [][Once RTC_CASES2,FLOOKUP_DEF,tailR1_def] >>
 PROVE_TAC []);
 
+val assign_succeeds = Q.store_thm(
+"assign_succeeds",
+`∃s'. (raw_assign emb p v s = SOME ((),s'))`,
+Cases_on `p` >> srw_tac [][]);
+
+val AddToEndOfList_SNOC = Q.store_thm(
+"AddToEndOfList_SNOC",
+`typed_state s0 ∧ is_embed emb ∧
+ list_of_List emb s0 l0 ls ∧
+ (OPTION_MAP FST (raw_lookup emb e s0) = SOME e') ⇒
+ ∃l s.
+ (AddToEndOfList emb e l0 s0 = SOME (l,s)) ∧
+ list_of_List emb s l (SNOC e' ls)`,
+simp_tac (srw_ss()) [AddToEndOfList_def,UNCURRY,list_of_List_def] >>
+Cases_on `lookup emb l0 s0` >> simp_tac (srw_ss()) [] >>
+Cases_on `raw_lookup emb e s0` >> simp_tac (srw_ss()) [] >>
+imp_res_tac lookup_state >>
+srw_tac [DNF_ss][] >>
+qmatch_assum_rename_tac `lookup emb l0 (SND p) = SOME p` [] >>
+Cases_on `p` >> fsrw_tac [][] >> srw_tac [][] >>
+qmatch_assum_rename_tac `raw_lookup emb e (SND p) = SOME p` [] >>
+Cases_on `p` >> fsrw_tac [][] >>
+free_addr_elim_tac >>
+qx_gen_tac `n` >> strip_tac >>
+qmatch_assum_rename_tac `n ∉ FDOM s.store` [] >>
+srw_tac [][] >>
+`ptr_to_num l0 ∈ FDOM s.store` by fsrw_tac [][lookup_succeeds,FLOOKUP_DEF] >>
+imp_res_tac typed_state_def >>
+`ptr_to_num l0 ≠ n` by PROVE_TAC [] >>
+srw_tac [][lookup_succeeds,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
+`?v. FLOOKUP s.store (ptr_to_num l0) = SOME v` by fsrw_tac [][lookup_succeeds] >>
+srw_tac [][] >>
+`∃lv. project_List v = SOME lv` by fsrw_tac [][lookup_succeeds] >>
+srw_tac [][EXISTS_PROD] >>
+Cases_on `lv` >> fsrw_tac [][] >>
+qmatch_assum_rename_tac `project_List v = SOME (List a1 a2)` [] >>
+Cases_on `v` >> fsrw_tac [][] >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num l0) = SOME (List_value a1 a2)` [] >>
+fsrw_tac [][typed_cell_def] >>
+fsrw_tac [][Once has_type_cases] >>
+`type = emb.type` by fsrw_tac [][lookup_succeeds] >>
+srw_tac [][] >>
+qho_match_abbrev_tac `?p1 p2 p3 p4. (assign emb l0 (List pa1 pn) ss = SOME (p1,p2)) ∧ X p2 p3 p4` >>
+`∃s'. assign emb l0 (List pa1 pn) ss = SOME ((),s')` by srw_tac [][assign_succeeds] >>
+srw_tac [DNF_ss][Abbr`X`] >>
+imp_res_tac assign_cell_type >>
+fsrw_tac [][APPLY_UPDATE_THM] >>
+`is_embed (embed_List emb)` by srw_tac [][is_embed_List] >>
+`lookup emb l0 s' = SOME (List pa1 pn, s')` by (
+  imp_res_tac lookup_assign >>
+  fsrw_tac [][] ) >>
+`FLOOKUP s'.store (ptr_to_num l0) = SOME (List_value a1 n)` by (
+  fsrw_tac [][lookup_succeeds] >>
+  qmatch_rename_tac `w = List_value a1 n` [] >>
+  Cases_on `w` >> fsrw_tac [][GSYM ptr_equality] ) >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `lookup emb l0 s = SOME (lv,s)` [] >>
+`lv = List pa1 (addr (:'a AuxList) a2)` by fsrw_tac [][lookup_succeeds] >>
+srw_tac [][] >> fsrw_tac [][] >>
+
 val _ = export_theory ()
