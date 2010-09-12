@@ -597,6 +597,19 @@ first_x_assum match_mp_tac >>
   srw_tac [][tailR1_def,reach1_cases,ptr_equality] ) >>
 PROVE_TAC [headR_def,RTC_RULES_RIGHT1]);
 
+val tailR_assign_unreachable = Q.store_thm(
+"tailR_assign_unreachable",
+`∀m n. tailR s l m n ⇒ ¬ tailR s l r n ⇒ tailR (s |+ (r,v)) l m n`,
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][] >>
+`~tailR s l r n` by PROVE_TAC [RTC_RULES_RIGHT1] >>
+fsrw_tac [][] >>
+qmatch_assum_rename_tac `tailR1 s l n p` [] >>
+`p ≠ r` by PROVE_TAC [RTC_REFL] >>
+`tailR1 (s |+ (r,v)) l n p` by (
+  fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] ) >>
+PROVE_TAC [RTC_RULES_RIGHT1] );
+
 val AddToFrontOfList_CONS = Q.store_thm(
 "AddToFrontOfList_CONS",
 `is_embed emb ∧ wfstate s0 ∧
