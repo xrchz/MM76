@@ -1,9 +1,6 @@
-open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs
+open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs option_guardTheory
 
 val _ = new_theory "reduce"
-
-val OPTION_GUARD_def = Define`
-  OPTION_GUARD b x = if b then SOME x else NONE`;
 
 val raw_while_def = Define`
   raw_while ((inj,prj) : ('a -> 'b) # ('b -> 'c # 'a))
@@ -78,7 +75,8 @@ val reduce_def = tDefine "reduce"`
     argsofm <- CreateListOfTempMulteq ;
     t <- HeadOfListOfTerms M ;
     t' <- lookup t ;
-    fs <- OPTION_GUARD (ISR t') (OUTR t').fsymb ;
+    OPTION_GUARD (ISR t') ;
+    fs <- return (OUTR t').fsymb ;
     (M,argsofm) <-
       repeat (M,argsofm) do
         argsofm1 <- CreateListOfTempMulteq ;
@@ -86,7 +84,7 @@ val reduce_def = tDefine "reduce"`
         t <- HeadOfListOfTerms M ;
         M <- TailOfListOfTerms M ;
         t' <- lookup t ;
-        OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
+        OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) ;
         argsoft <- return (OUTR t').args ;
         (argsoft,argsofm,argsofm1) <-
           while (argsoft,argsofm,argsofm1)
