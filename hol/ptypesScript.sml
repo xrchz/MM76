@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib boolSimps SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory reachTheory lcsymtacs
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory reachTheory lcsymtacs option_guardTheory
 
 val _ = new_theory "ptypes"
 
@@ -54,7 +54,7 @@ in
 end g
 
 val _ = augment_srw_ss [rewrites [STATE_OPTION_IGNORE_BIND_def,STATE_OPTION_BIND_def,STATE_OPTION_FAIL_def,STATE_OPTION_UNIT_def]]
-val _ = augment_srw_ss [rewrites [OPTION_BIND_def]]
+val _ = augment_srw_ss [rewrites [OPTION_BIND_def,OPTION_IGNORE_BIND_def,OPTION_GUARD_def]]
 
 val CreateList_empty = Q.store_thm(
 "CreateList_empty",
@@ -90,6 +90,8 @@ qmatch_assum_rename_tac `dispose (FST p1).first (SND v) = SOME w` [] >>
 Cases_on `l` >> Cases_on `(FST p1).first` >>
 Cases_on `p1` >> Cases_on `v` >> Cases_on `w` >>
 fsrw_tac [][state_component_equality] >>
+qpat_assum `X = SOME s` mp_tac >>
+fsrw_tac [][FLOOKUP_DEF] >>
 metis_tac [DOMSUB_COMMUTES,DOMSUB_IDEM,DOMSUB_FUPDATE]);
 
 val EmptyList_state = Q.store_thm(
@@ -114,13 +116,12 @@ val lookup_dispose = Q.store_thm(
  (raw_lookup emb p2 (SND x) =
   if ptr_to_num p1 = ptr_to_num p2 then NONE
   else OPTION_MAP (I ## K (SND x)) (raw_lookup emb p2 s))`,
-Cases_on `p1` >> Cases_on `p2` >> ntac 2 (srw_tac [][]) >>
+Cases_on `p1` >> Cases_on `p2` >>
+ntac 2 (srw_tac [][]) >> fsrw_tac [][] >>
 srw_tac [][DOMSUB_FLOOKUP_THM] >>
 srw_tac [][FLOOKUP_DEF] >>
-srw_tac [][] >>
-qmatch_abbrev_tac `OPTION_BIND x y = z` >>
-Cases_on `x` >> srw_tac [][] >>
-unabbrev_all_tac >> srw_tac [][]);
+qmatch_assum_rename_tac `s.cell_type m = emb.type` [] >>
+Cases_on `emb.project (s.store ' m)` >> srw_tac [][]);
 
 val lookup_fails = Q.store_thm(
 "lookup_fails",
@@ -152,7 +153,7 @@ Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 val assign_cell_type = Q.store_thm(
 "assign_cell_type",
 `(raw_assign emb p v s = SOME x) ⇒ ((SND x).cell_type = ((ptr_to_num p) =+ emb.type) s.cell_type)`,
-Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
+Cases_on `p` >> srw_tac [][FUN_EQ_THM,APPLY_UPDATE_THM] >> ntac 2 (srw_tac [][]));
 
 val lookup_unbound = Q.store_thm(
 "lookup_unbound",
@@ -179,16 +180,31 @@ val typed_cell_bound = Q.store_thm(
 `typed_cell s ms n ⇒ (n = 0) ∨ n ∈ ms ∨ n ∈ FDOM s.store`,
 srw_tac [][Once has_type_cases,FLOOKUP_DEF] >> srw_tac [][]);
 
+val assign_FDOM = Q.store_thm(
+"assign_FDOM",
+`(raw_assign emb p v s = SOME x) ⇒
+ (FDOM (SND x).store = (ptr_to_num p) INSERT (FDOM s.store))`,
+Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
+
 val assign_comm = Q.store_thm(
 "assign_comm",
 `ptr_to_num p1 ≠ ptr_to_num p2 ∧
  (raw_assign emb1 p1 v1 s = SOME x1) ∧
  (raw_assign emb2 p2 v2 s = SOME x2) ⇒
  (raw_assign emb1 p1 v1 (SND x2) = raw_assign emb2 p2 v2 (SND x1))`,
+srw_tac [][] >>
+imp_res_tac assign_store >>
+imp_res_tac assign_cell_type >>
+imp_res_tac assign_FDOM >>
 Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
-srw_tac [][state_component_equality,FUN_EQ_THM,APPLY_UPDATE_THM] >>
-srw_tac [][GSYM fmap_EQ,INSERT_COMM] >>
-srw_tac [][FUN_EQ_THM,FAPPLY_FUPDATE_THM] >>
+fsrw_tac [][APPLY_UPDATE_THM] >>
+fsrw_tac [][state_component_equality] >>
+srw_tac [][] >> fsrw_tac [][] >>
+srw_tac [][FUPDATE_COMMUTES] >>
+srw_tac [][UPDATE_COMMUTES] >>
+TRY (qpat_assum `X ≠ emb2.type` mp_tac >> srw_tac [][]) >>
+srw_tac [][FUN_EQ_THM,APPLY_UPDATE_THM] >>
+srw_tac [][] >>
 srw_tac [][]);
 
 val free_addr_state = Q.store_thm(
@@ -299,12 +315,6 @@ reverse (srw_tac [][]) >- (
 >- srw_tac [][typed_cell_def] >>
 srw_tac [][Once has_type_cases]);
 
-val assign_FDOM = Q.store_thm(
-"assign_FDOM",
-`(raw_assign emb p v s = SOME x) ⇒
- (FDOM (SND x).store = (ptr_to_num p) INSERT (FDOM s.store))`,
-Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
-
 val free_addr_neq_0 = Q.store_thm(
 "free_addr_neq_0",
 `(free_addr s = SOME p) ⇒ ptr_to_num (FST p) ≠ 0`,
@@ -351,13 +361,14 @@ Cases_on `s.cell_type n = List_type emb.type` >> fsrw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store n = SOME lv` [] >>
 Cases_on `lv` >> fsrw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store n = SOME (List_value a1 a2)` [] >>
+fsrw_tac [DNF_ss][EXISTS_PROD] >>
 free_addr_elim_tac >> qx_gen_tac `m` >>
-srw_tac [][] >>
+strip_tac >>
 `n ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
 `m ≠ n` by PROVE_TAC [] >>
+fsrw_tac [][APPLY_UPDATE_THM] >>
+srw_tac [][] >>
 fsrw_tac [][wfstate_def,typed_state_def] >>
-`n ≠ 0` by PROVE_TAC [] >>
-fsrw_tac [][] >>
 qx_gen_tac `p` >>
 qmatch_abbrev_tac `G` >>
 `typed_cell s {} n` by PROVE_TAC [] >>
@@ -385,14 +396,10 @@ Q.UNABBREV_TAC `G` >>
 qho_match_abbrev_tac `(p = n) ∨ (p = m) ∨ p ∈ FDOM s.store ⇒ typed_cell ss {} p` >>
 Cases_on `p = n` >- (
   srw_tac [][Abbr`ss`,typed_cell_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
-  qmatch_abbrev_tac `has_type (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) c v t` >>
-  qsuff_tac `has_type ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) c v t` >- (
-    qsuff_tac `s with <|store updated_by x1; store updated_by x2; cell_type updated_by x4|> =
-               s with <|store updated_by x1; cell_type updated_by x3; store updated_by x2; cell_type updated_by x4|>`
+  qmatch_abbrev_tac `has_type (s with <|store updated_by x1 o x2; cell_type updated_by x4|>) c v t` >>
+  qsuff_tac `has_type ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) c v t`
     >- srw_tac [][] >>
-    srw_tac [][state_component_equality,Abbr`x3`,Abbr`x4`,FUN_EQ_THM,APPLY_UPDATE_THM] >>
-    srw_tac [][] ) >>
-  map_every Q.UNABBREV_TAC [`x1`,`x2`,`x3`,`x4`,`c`,`v`,`t`] >>
+  map_every Q.UNABBREV_TAC [`x1`,`x2`,`x4`,`c`,`v`,`t`] >>
   (has_type_assign_bound |> CONJUNCT1 |> MP_CANON |> match_mp_tac) >>
   fsrw_tac [][APPLY_UPDATE_THM] >>
   srw_tac [][Once has_type_cases,APPLY_UPDATE_THM] >- (
@@ -406,14 +413,10 @@ Cases_on `p = n` >- (
   srw_tac [][] ) >>
 Cases_on `p = m` >- (
   srw_tac [][Abbr`ss`,typed_cell_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM] >>
-  qmatch_abbrev_tac `has_type (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) c v t` >>
-  qsuff_tac `has_type ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) c v t` >- (
-    qsuff_tac `s with <|store updated_by x1; store updated_by x2; cell_type updated_by x4|> =
-               s with <|store updated_by x1; cell_type updated_by x3; store updated_by x2; cell_type updated_by x4|>`
+  qmatch_abbrev_tac `has_type (s with <|store updated_by x1 o x2; cell_type updated_by x4|>) c v t` >>
+  qsuff_tac `has_type ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) c v t`
     >- srw_tac [][] >>
-    srw_tac [][state_component_equality,Abbr`x3`,Abbr`x4`,FUN_EQ_THM,APPLY_UPDATE_THM] >>
-    srw_tac [][] >> srw_tac [][] ) >>
-  map_every Q.UNABBREV_TAC [`x1`,`x2`,`x3`,`x4`,`c`,`v`,`t`] >>
+  map_every Q.UNABBREV_TAC [`x1`,`x2`,`x4`,`c`,`v`,`t`] >>
   (has_type_assign_bound |> CONJUNCT1 |> MP_CANON |> match_mp_tac) >>
   fsrw_tac [][APPLY_UPDATE_THM] >>
   conj_tac >- (
@@ -432,14 +435,10 @@ Cases_on `p = m` >- (
   fsrw_tac [][] >>
   srw_tac [][has_type_INSERT_cached] ) >>
 srw_tac [][Abbr`ss`] >>
-qmatch_abbrev_tac `typed_cell (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) {} p` >>
-qsuff_tac `typed_cell ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) {} p` >- (
-  qsuff_tac `s with <|store updated_by x1; store updated_by x2; cell_type updated_by x4|> =
-             s with <|store updated_by x1; cell_type updated_by x3; store updated_by x2; cell_type updated_by x4|>`
+qmatch_abbrev_tac `typed_cell (s with <|store updated_by x1 o x2; cell_type updated_by x4|>) {} p` >>
+qsuff_tac `typed_cell ((s with <|store updated_by x2; cell_type updated_by x4|>) with <|store updated_by x1|>) {} p`
   >- srw_tac [][] >>
-  srw_tac [][state_component_equality,Abbr`x3`,Abbr`x4`,FUN_EQ_THM,APPLY_UPDATE_THM] >>
-  srw_tac [][] >> srw_tac [][] ) >>
-map_every Q.UNABBREV_TAC [`x1`,`x2`,`x3`,`x4`] >>
+map_every Q.UNABBREV_TAC [`x1`,`x2`,`x4`] >>
 (has_type_assign_bound |> CONJUNCT2 |> MP_CANON |> match_mp_tac) >>
 fsrw_tac [][APPLY_UPDATE_THM] >>
 conj_tac >- (
@@ -670,7 +669,12 @@ qmatch_assum_rename_tac `n ∉ FDOM s.store` [] >>
 srw_tac [][] >>
 qho_match_abbrev_tac `?x z. (assign emb l0 lv ss = SOME x) ∧ (lookup emb l0 (SND x) = SOME z) ∧ X x z` >>
 `?x. assign emb l0 lv ss = SOME x` by (
-  Cases_on `l0` >> srw_tac [][] ) >>
+  Cases_on `l0` >> fsrw_tac [DNF_ss][] >>
+  qmatch_assum_rename_tac `s.cell_type n0 = List_type emb.type` [] >>
+  `n0 ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+  `n0 ≠ 0` by PROVE_TAC [wfstate_def] >>
+  srw_tac [][Abbr`ss`,APPLY_UPDATE_THM] >>
+  fsrw_tac [][]) >>
 srw_tac [][] >>
 `lookup emb l0 (SND x) = SOME (lv,SND x)` by (
   match_mp_tac (GEN_ALL lookup_assign) >>
@@ -725,13 +729,17 @@ qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num l0) = SOME (List_value a1 a
 Cases_on `l0` >> fsrw_tac [][] >>
 srw_tac [][] >> fsrw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store l0 = SOME (List_value a1 a2)` [] >>
-qmatch_abbrev_tac `list_of_AuxList emb (s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|>) pa2 pa1 ls` >>
-qsuff_tac `list_of_AuxList emb ((s with <|store updated_by x1; cell_type updated_by x3|>) with <|store updated_by x2; cell_type updated_by x4|>) pa2 pa1 ls` >- (
+`l0 ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+fsrw_tac [][] >>
+srw_tac [][] >>
+qmatch_abbrev_tac `list_of_AuxList emb (s with <|store updated_by x1 o x2; cell_type updated_by x4|>) pa2 pa1 ls` >>
+qsuff_tac `list_of_AuxList emb ((s with <|store updated_by x1; cell_type updated_by (l0 =+ (s.cell_type l0))|>) with <|store updated_by x2; cell_type updated_by x4|>) pa2 pa1 ls` >- (
   srw_tac [][] >>
-  qsuff_tac `s with <|store updated_by x1 o x2; cell_type updated_by x3 o x4|> = s with <|store updated_by x2 o x1; cell_type updated_by x4 o x3|>` >- metis_tac [] >>
-  srw_tac [][state_component_equality,Abbr`x1`,Abbr`x2`,FUPDATE_COMMUTES,Abbr`x3`,Abbr`x4`] >>
+  qsuff_tac `s with <|store updated_by x1 o x2; cell_type updated_by x4|> = s with <|store updated_by x2 o x1; cell_type updated_by x4 o (l0 =+ List_type emb.type)|>` >- metis_tac [] >>
+  srw_tac [][state_component_equality,Abbr`x1`,Abbr`x2`,FUPDATE_COMMUTES,Abbr`x4`] >>
   srw_tac [][FUN_EQ_THM,APPLY_UPDATE_THM] >>
-  srw_tac [][] ) >>
+  srw_tac [][] >>
+  fsrw_tac [][lookup_succeeds]) >>
 unabbrev_all_tac >>
 match_mp_tac (MP_CANON list_of_AuxList_assign_unbound) >>
 srw_tac [][] >>
@@ -759,9 +767,7 @@ qsuff_tac `s.cell_type l0 = AuxList_type emb.type` >- srw_tac [][] >>
 match_mp_tac (MP_CANON (GEN_ALL list_of_AuxList_tailR_type)) >>
 qmatch_assum_abbrev_tac `list_of_AuxList emb s pa2 pa1 ls` >>
 map_every qexists_tac [`pa2`,`pa1`,`ls`] >>
-`l0 ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
 fsrw_tac [][wfstate_def] >>
-`l0 ≠ 0` by PROVE_TAC [] >>
 srw_tac [][Abbr`pa1`] >>
 imp_res_tac typed_state_def >>
 pop_assum mp_tac >>
@@ -770,11 +776,6 @@ srw_tac [][Once has_type_cases] >>
 first_x_assum match_mp_tac >>
 fsrw_tac [][Once RTC_CASES2,FLOOKUP_DEF,tailR1_def] >>
 PROVE_TAC []);
-
-val assign_succeeds = Q.store_thm(
-"assign_succeeds",
-`∃s'. (raw_assign emb p v s = SOME ((),s'))`,
-Cases_on `p` >> srw_tac [][]);
 
 val list_of_AuxList_SNOC = Q.store_thm(
 "list_of_AuxList_SNOC",
