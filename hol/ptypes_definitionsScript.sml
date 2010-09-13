@@ -320,8 +320,9 @@ val (list_of_AuxList_rules, list_of_AuxList_ind, list_of_AuxList_cases) = Hol_re
    list_of_AuxList emb s last al (hd'::tl'))`;
 
 val list_of_List_def = Define`
-  list_of_List emb s l al' =
+  list_of_List emb s l ls =
      ∃l'. (OPTION_MAP FST (lookup emb l s) = SOME l') ∧
-          list_of_AuxList emb s l'.last l'.first al'`;
+          l'.last ≠ pnil ∧
+          list_of_AuxList emb s l'.last l'.first ls`;
 
 val _ = export_theory ()
