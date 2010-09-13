@@ -598,16 +598,36 @@ PROVE_TAC [headR_def,RTC_RULES_RIGHT1]);
 
 val tailR_assign_unreachable = Q.store_thm(
 "tailR_assign_unreachable",
-`∀m n. tailR s l m n ⇒ ¬ tailR s l r n ⇒ tailR (s |+ (r,v)) l m n`,
+`¬tailR s l r n ⇒ (tailR (s |+ (r,v)) l m n ⇔ tailR s l m n)`,
+strip_tac >> EQ_TAC >>
+strip_tac >> qpat_assum `~tailR s l r n` mp_tac >>
+pop_assum mp_tac >>
+map_every qid_spec_tac [`n`,`m`] >>
 ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
-srw_tac [][] >>
-`~tailR s l r n` by PROVE_TAC [RTC_RULES_RIGHT1] >>
-fsrw_tac [][] >>
+srw_tac [][] >- (
+  qmatch_assum_rename_tac `tailR1 ss l n p` ["ss"] >>
+  `p ≠ r` by PROVE_TAC [RTC_REFL] >>
+  `tailR1 s l n p` by (
+    fsrw_tac [][tailR1_def,FLOOKUP_UPDATE]) >>
+  PROVE_TAC [RTC_RULES_RIGHT1] ) >>
 qmatch_assum_rename_tac `tailR1 s l n p` [] >>
 `p ≠ r` by PROVE_TAC [RTC_REFL] >>
 `tailR1 (s |+ (r,v)) l n p` by (
   fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] ) >>
 PROVE_TAC [RTC_RULES_RIGHT1] );
+
+val tailR_assign_last = Q.store_thm(
+"tailR_assign_last",
+`tailR (s |+ (ptr_to_num l,v)) l m n ⇔ tailR s l m n`,
+EQ_TAC >> map_every qid_spec_tac [`n`,`m`] >>
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][] >|[
+  `tailR1 s l n n'` by (
+    fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] >>
+    pop_assum mp_tac >> srw_tac [][] ),
+  `tailR1 (s |+ (ptr_to_num l,v)) l n n'` by (
+    fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] )] >>
+PROVE_TAC [RTC_RULES_RIGHT1]);
 
 val list_of_AuxList_assign_last = Q.store_thm(
 "list_of_AuxList_assign_last",
