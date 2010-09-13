@@ -831,6 +831,14 @@ qmatch_assum_rename_tac `lookup emb p s = SOME l` [] >>
   srw_tac [][] ) >>
 PROVE_TAC [RTC_RULES_RIGHT1]);
 
+val tailR_imp_cell_reach = Q.store_thm(
+"tailR_imp_cell_reach",
+`∀m n. tailR s l m n ⇒ cell_reach s m n`,
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][tailR1_def] >>
+srw_tac [][Once RTC_CASES2,cell_reach1_def,reach1_cases] >>
+PROVE_TAC []);
+
 val AddToEndOfList_SNOC = Q.store_thm(
 "AddToEndOfList_SNOC",
 `wfstate s0 ∧ is_embed emb ∧
