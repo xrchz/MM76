@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs
+open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory
 
 val _ = new_theory "reduce"
 
@@ -92,22 +92,34 @@ val AddTerm_def = Define`
 val BuildFunctionTerm_def = Define`
   BuildFunctionTerm fs args = new (INR (FunTerm fs args))`;
 
-val _ = xDefine "foo"`
+val foo_def = tDefine "foo"`
   foo M =
   STATE_OPTION_BIND (STATE_OPTION_UNIT F)
   (λb. STATE_OPTION_IGNORE_BIND
-       (if b then foo M else STATE_OPTION_UNIT ())
-       (STATE_OPTION_UNIT ()))`;
+         (if b then foo M else STATE_OPTION_UNIT ())
+         (STATE_OPTION_UNIT ()))`
+(WF_REL_TAC `REMPTY` >>
+ srw_tac [][state_optionTheory.STATE_OPTION_UNIT_def]);
 
-val _ = xDefine "mini_rec"`
-  mini_rec M = do
+val STATE_OPTION_GET_def = Define`
+  STATE_OPTION_GET : ('a,'a) state_option
+  s = SOME (s,s)`;
+
+Hol_defn "plen"
+(*(print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] o Term)*)
+`
+  plen M = do
+    s <- STATE_OPTION_GET ;
+    STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ()) ;
     b <- EmptyListOfTerms M ;
     n <- if ¬ b then do
       M <- TailOfListOfTerms M ;
-      mini_rec M
-    od else return 1 ;
-    return 1
-  od`;
+      plen M
+    od else return 0 ;
+    return (n + 1)
+  od`
+
+app ((fn x => print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] x before print"\n") o concl) (DefnBase.read_congs())
 
 val _ = xDefine "mini_reduce"`
   mini_reduce M = do
