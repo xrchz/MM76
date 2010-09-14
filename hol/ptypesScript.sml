@@ -1050,14 +1050,59 @@ fsrw_tac [][] >>
     fsrw_tac [][] ) >>
   fsrw_tac [][Abbr`pa1`] >>
   PROVE_TAC [tailR_imp_cell_reach,cell_reach_typed_state_unbound_eq_0] ) >>
-qmatch_assum_rename_tac `assign emb l0 v ss = SOME ((),sss)` ["v"] >>
-`tailR sss.store pa2 n (ptr_to_num pa1)`
-conj_asm1_tac >-
-list_of_AuxList_assign_unreachable
-`¬tailR s'.store pa2 (ptr_to_num l0) (ptr_to_num pa1)` by (
+qmatch_assum_abbrev_tac `assign emb l0 v ss = SOME ((),sss)` >>
+qunabbrev_tac `sss` >>
+qmatch_assum_rename_tac `assign emb l0 v ss = SOME ((),sss)` [] >>
+`sss = ss with store updated_by (ptr_to_num l0 =+ (embed_List emb).inject v)` by (
+  qpat_assum `assign emb l0 v ss = X` mp_tac >>
+  Cases_on `l0` >> fsrw_tac [][Abbr`ss`,APPLY_UPDATE_THM] ) >>
+fsrw_tac [][tailR_assign_unreachable] >>
+`¬tailR s.store pa2 n a1` by (
+  qsuff_tac `~cell_reach s.store n a1` >-
+  PROVE_TAC [tailR_imp_cell_reach] >>
+  PROVE_TAC [cell_reach_typed_state_unbound_eq_0] ) >>
+conj_tac >- (
+  qsuff_tac `list_of_AuxList emb (ss with <|store updated_by (ptr_to_num l0 =+ (embed_List emb).inject v) ;
+                                            cell_type updated_by (ptr_to_num l0 =+ List_type emb.type)|>)
+                                 pa2 pa1 ls` >- (
+    qmatch_abbrev_tac `list_of_AuxList emb ss1 pa2 pa1 ls ⇒ list_of_AuxList emb ss2 pa2 pa1 ls` >>
+    qsuff_tac `ss1 = ss2` >- srw_tac [][] >>
+    srw_tac [][Abbr`ss1`,Abbr`ss2`,state_component_equality] ) >>
+  match_mp_tac (MP_CANON list_of_AuxList_assign_unreachable) >>
+  srw_tac [][] >>
+  srw_tac [][Abbr`ss`] >>
+  qmatch_abbrev_tac `~headR (ss |+ (a2,av)) pa2 (ptr_to_num l0) (ptr_to_num pa1)` >>
+  `a2 = ptr_to_num pa2` by srw_tac [][Abbr`pa2`] >>
+  srw_tac [][] >>
+  `∀t. FLOOKUP ss (ptr_to_num pa2) ≠ SOME (AuxList_value (ptr_to_num l0) t) ∧
+       av ≠ AuxList_value (ptr_to_num l0) t` by (
+    fsrw_tac [][markerTheory.Abbrev_def] >>
+    srw_tac [][FLOOKUP_UPDATE] >>
+    spose_not_then strip_assume_tac >>
+    `typed_cell s {} (ptr_to_num pa2)` by PROVE_TAC [typed_state_def] >>
+    pop_assum mp_tac >> srw_tac [][typed_cell_def] >>
+    srw_tac [][Once has_type_cases,type_inductive] ) >>
+  srw_tac [][headR_assign_irrelevant_last] >>
+  qunabbrev_tac `ss` >>
+  `¬tailR s.store pa2 n (ptr_to_num pa1)` by PROVE_TAC [ptr_to_num_def] >>
+  srw_tac [][headR_assign_unreachable] >>
   spose_not_then strip_assume_tac >>
-  list_of_AuxList_tailR_type
-  fsrw_tac [][] >>
- match_mp_tac (MP_CANON tailR_assign_unreachable)
+  `s.cell_type (ptr_to_num l0) = emb.type` by (
+    match_mp_tac (MP_CANON (GEN_ALL list_of_AuxList_headR_type)) >>
+    map_every qexists_tac [`pa2`,`pa1`,`ls`] >>
+    fsrw_tac [][wfstate_def] >>
+    srw_tac [][Abbr`pa1`] >>
+    first_x_assum match_mp_tac >>
+    fsrw_tac [][headR_def] >>
+    `a ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+    Cases_on `a1=a` >- PROVE_TAC [] >>
+    fsrw_tac [][Once RTC_CASES2,tailR1_def] >>
+    `a1 ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+    PROVE_TAC [] ) >>
+  PROVE_TAC [type_inductive] ) >>
+`a2 = ptr_to_num pa2` by srw_tac [][Abbr`pa2`] >>
+srw_tac [][Abbr`ss`,Abbr`pa1`] >>
+srw_tac [][tailR_assign_last] >>
+srw_tac [][tailR_assign_unreachable]);
 
 val _ = export_theory ()
