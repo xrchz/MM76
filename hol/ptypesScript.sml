@@ -629,6 +629,26 @@ srw_tac [][] >|[
     fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] )] >>
 PROVE_TAC [RTC_RULES_RIGHT1]);
 
+val headR_assign_unreachable = Q.store_thm(
+"headR_assign_unreachable",
+`¬tailR s l r n ⇒ (headR (s |+ (r,v)) l m n ⇔ headR s l m n)`,
+srw_tac [][headR_def] >>
+srw_tac [][tailR_assign_unreachable] >>
+srw_tac [][EQ_IMP_THM,FLOOKUP_UPDATE] >>
+Cases_on `a=r` >> fsrw_tac [SATISFY_ss][] >>
+qexists_tac `a` >>
+srw_tac [][]);
+
+val headR_assign_irrelevant_last = Q.store_thm(
+"headR_assign_irrelevant_last",
+`(∀t. FLOOKUP s (ptr_to_num l) ≠ SOME (AuxList_value m t) ∧ v ≠ AuxList_value m t) ⇒
+ (headR (s |+ (ptr_to_num l,v)) l m n ⇔ headR s l m n)`,
+srw_tac [][headR_def,tailR_assign_last,FLOOKUP_UPDATE] >>
+srw_tac [][EQ_IMP_THM] >>
+Cases_on `a = ptr_to_num l` >> fsrw_tac [SATISFY_ss][] >>
+TRY (qexists_tac `a`) >>
+srw_tac [][] >> fsrw_tac [DNF_ss][]);
+
 val list_of_AuxList_assign_last = Q.store_thm(
 "list_of_AuxList_assign_last",
 `∀p ls. list_of_AuxList emb s l p ls ⇒
