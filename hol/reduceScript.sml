@@ -5,6 +5,46 @@ val _ = new_theory "reduce"
 val OPTION_GUARD_def = Define`
   OPTION_GUARD b x = if b then SOME x else NONE`;
 
+val foo_def = tDefine "foo"`
+  foo M =
+  STATE_OPTION_BIND (STATE_OPTION_UNIT F)
+  (λb. STATE_OPTION_IGNORE_BIND
+         (if b then foo M else STATE_OPTION_UNIT ())
+         (STATE_OPTION_UNIT ()))`
+(WF_REL_TAC `REMPTY` >> srw_tac [][STATE_OPTION_UNIT_def]);
+
+Hol_defn "plen" `
+  plen M = do
+    (λs. OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ((),s)) ;
+    b <- EmptyListOfTerms M ;
+    n <- if ¬ b then do
+      M <- TailOfListOfTerms M ;
+      plen M
+    od else return 0 ;
+    return (n + 1)
+  od`
+(*
+val STATE_OPTION_GET_def = Define`
+  STATE_OPTION_GET : ('a,'a) state_option
+  s = SOME (s,s)`;
+
+Hol_defn "plen"
+(*(print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] o Term)*)
+`
+  plen M = do
+    s <- STATE_OPTION_GET ;
+    STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ()) ;
+    b <- EmptyListOfTerms M ;
+    n <- if ¬ b then do
+      M <- TailOfListOfTerms M ;
+      plen M
+    od else return 0 ;
+    return (n + 1)
+  od`
+
+app ((fn x => print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] x before print"\n") o concl) (DefnBase.read_congs())
+*)
+
 val raw_while_def = Define`
   raw_while ((inj,prj) : ('a -> 'b) # ('b -> 'c # 'a))
         (guard  : 'b -> (bool # 'b) option)
@@ -63,6 +103,22 @@ val loop_put_def = Define`
   loop_put : 'c -> ('c # 'a) -> (unit # ('c # 'a)) option
   c (_,a) = SOME ((),(c,a))`;
 
+val _ = xDefine "mini_reduce"`
+  mini_reduce M = do
+    while 1
+      (do n <- loop_get ; return (n = 2) od)
+    do
+      b <- EmptyListOfTerms M ;
+      n <- loop_lift
+        if ¬ b then do
+          M <- TailOfListOfTerms M ;
+          mini_reduce M
+        od else return 2 ;
+      loop_put n
+    od ;
+  return 2
+  od`
+
 val AddTerm_def = Define`
   AddTerm t1 argsofm argsofm1 = do
     b <- EmptyListOfTempMulteq argsofm ;
@@ -91,51 +147,6 @@ val AddTerm_def = Define`
 
 val BuildFunctionTerm_def = Define`
   BuildFunctionTerm fs args = new (INR (FunTerm fs args))`;
-
-val foo_def = tDefine "foo"`
-  foo M =
-  STATE_OPTION_BIND (STATE_OPTION_UNIT F)
-  (λb. STATE_OPTION_IGNORE_BIND
-         (if b then foo M else STATE_OPTION_UNIT ())
-         (STATE_OPTION_UNIT ()))`
-(WF_REL_TAC `REMPTY` >>
- srw_tac [][state_optionTheory.STATE_OPTION_UNIT_def]);
-
-val STATE_OPTION_GET_def = Define`
-  STATE_OPTION_GET : ('a,'a) state_option
-  s = SOME (s,s)`;
-
-Hol_defn "plen"
-(*(print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] o Term)*)
-`
-  plen M = do
-    s <- STATE_OPTION_GET ;
-    STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ()) ;
-    b <- EmptyListOfTerms M ;
-    n <- if ¬ b then do
-      M <- TailOfListOfTerms M ;
-      plen M
-    od else return 0 ;
-    return (n + 1)
-  od`
-
-app ((fn x => print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] x before print"\n") o concl) (DefnBase.read_congs())
-
-val _ = xDefine "mini_reduce"`
-  mini_reduce M = do
-    while 1
-      (do n <- loop_get ; return (n = 2) od)
-    do
-      b <- EmptyListOfTerms M ;
-      n <- loop_lift
-        if ¬ b then do
-          M <- TailOfListOfTerms M ;
-          mini_reduce M
-        od else return 2 ;
-      loop_put n
-    od ;
-  return 2
-  od`
 
 val reduce_def = xDefine "reduce"`
   reduce M = do
