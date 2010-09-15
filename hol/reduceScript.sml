@@ -1,9 +1,6 @@
-open HolKernel boolLib bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory
+open HolKernel boolLib bossLib Parse monadsyntax ptypes_definitionsTheory lcsymtacs state_optionTheory option_guardTheory
 
 val _ = new_theory "reduce"
-
-val OPTION_GUARD_def = Define`
-  OPTION_GUARD b x = if b then SOME x else NONE`;
 
 val foo_def = tDefine "foo"`
   foo M =
@@ -15,7 +12,7 @@ val foo_def = tDefine "foo"`
 
 Hol_defn "plen" `
   plen M = do
-    (λs. OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ((),s)) ;
+    (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
     b <- EmptyListOfTerms M ;
     n <- if ¬ b then do
       M <- TailOfListOfTerms M ;
@@ -155,7 +152,8 @@ val reduce_def = xDefine "reduce"`
     argsofm <- CreateListOfTempMulteq ;
     t <- HeadOfListOfTerms M ;
     t' <- lookup t ;
-    fs <- OPTION_GUARD (ISR t') (OUTR t').fsymb ;
+    OPTION_GUARD (ISR t') ;
+    fs <- return (OUTR t').fsymb ;
     (M,argsofm) <-
       repeat (M,argsofm) do
         argsofm1 <- CreateListOfTempMulteq ;
@@ -163,7 +161,7 @@ val reduce_def = xDefine "reduce"`
         t <- HeadOfListOfTerms M ;
         M <- TailOfListOfTerms M ;
         t' <- lookup t ;
-        OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) () ;
+        OPTION_GUARD (ISR t' ∧ ((OUTR t').fsymb = fs)) ;
         argsoft <- return (OUTR t').args ;
         (argsoft,argsofm,argsofm1) <-
           while (argsoft,argsofm,argsofm1)
