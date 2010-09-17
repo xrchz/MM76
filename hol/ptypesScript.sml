@@ -1105,4 +1105,17 @@ srw_tac [][Abbr`ss`,Abbr`pa1`] >>
 srw_tac [][tailR_assign_last] >>
 srw_tac [][tailR_assign_unreachable]);
 
+val HeadOfList_HD = Q.store_thm(
+"HeadOfList_HD",
+`list_of_List emb s l (h::ls) ⇒
+ ∃p.
+ (HeadOfList emb l s = SOME (p,s)) ∧
+ (raw_lookup emb p s = SOME (h,s))`,
+srw_tac [][list_of_List_def,EXISTS_PROD] >>
+fsrw_tac [][Once list_of_AuxList_cases,UNCURRY] >>
+srw_tac [][] >> fsrw_tac [][] >> srw_tac [][] >>
+srw_tac [][HeadOfList_def,UNCURRY,EXISTS_PROD] >>
+fsrw_tac [][lookup_succeeds] >>
+srw_tac [][]);
+
 val _ = export_theory ()
