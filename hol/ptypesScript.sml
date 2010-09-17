@@ -1118,4 +1118,13 @@ srw_tac [][HeadOfList_def,UNCURRY,EXISTS_PROD] >>
 fsrw_tac [][lookup_succeeds] >>
 srw_tac [][]);
 
+val EmptyList_NULL = Q.store_thm(
+"EmptyList_NULL",
+`list_of_List emb s l ls ⇒
+ (EmptyList emb l s = SOME (ls = [],s))`,
+srw_tac [][list_of_List_def,EmptyList_def,UNCURRY,EXISTS_PROD] >>
+fsrw_tac [][lookup_succeeds] >> srw_tac [][] >>
+EQ_TAC >> srw_tac [][] >>
+fsrw_tac [][Once list_of_AuxList_cases]);
+
 val _ = export_theory ()
