@@ -3,96 +3,71 @@ open HolKernel boolLib bossLib Parse monadsyntax ptypes_definitionsTheory lcsymt
 val _ = new_theory "reduce"
 
 (*
-val STATE_OPTION_IGNORE_BIND_weak_cong = Q.store_thm(
-"STATE_OPTION_IGNORE_BIND_weak_cong",
-`(m1 = m1') ∧
- (!s''. (∃s. OPTION_MAP SND (m1' s) = SOME s'') ⇒ (m2 s'' = m2' s'')) ⇒
- (STATE_OPTION_IGNORE_BIND m1 m2 = STATE_OPTION_IGNORE_BIND m1' m2')`,
-srw_tac [boolSimps.DNF_ss][STATE_OPTION_IGNORE_BIND_def,FUN_EQ_THM] >>
-Cases_on `m1' x` >> srw_tac [][] >> PROVE_TAC []);
-val () = DefnBase.add_cong STATE_OPTION_IGNORE_BIND_weak_cong;
-(* fix drop_cong if there are going to be multiple congruences... *)
+HOW DO YOU TURN
 
-val STATE_OPTION_BIND_weak_cong = Q.store_thm(
-"STATE_OPTION_BIND_weak_cong",
-`(m = m') ∧
- (∀v s''. (∃s. (m' s = SOME (v,s''))) ⇒ (f v s'' = f' v s'')) ⇒
- (STATE_OPTION_BIND m f = STATE_OPTION_BIND m' f')`,
-srw_tac [boolSimps.DNF_ss][STATE_OPTION_BIND_def,FUN_EQ_THM] >>
-Cases_on `m' x` >> srw_tac [][pairTheory.UNCURRY] >>
-first_x_assum match_mp_tac >> srw_tac [][pairTheory.EXISTS_PROD] >>
-PROVE_TAC [] );
-val () = DefnBase.add_cong STATE_OPTION_BIND_weak_cong;
+`plen M =
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
+ (STATE_OPTION_BIND (EmptyListOfTerms M)
+   (λb. if ¬b then
+          STATE_OPTION_BIND (TailOfListOfTerms M)
+          (λM. STATE_OPTION_BIND (plen M)
+               (λn. STATE_OPTION_UNIT (n + 1)))
+        else STATE_OPTION_UNIT 0))`
+
+INTO
+
+`plen M = \s.
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
+ (\s. STATE_OPTION_BIND (EmptyListOfTerms M)
+      (λb.\s. if ¬ b
+             then STATE_OPTION_BIND (TailOfListOfTerms M)
+                  (λM. \s. STATE_OPTION_BIND (plen M)
+                         (λn.\s. STATE_OPTION_UNIT (n+1) s)
+                         s)
+                  s
+             else (STATE_OPTION_UNIT 0 s))
+      s)
+ s`
+
+GENERICALLY?
+
+is COND the only special case?
+i.e. use this
+`if b then c else a = (λx. if b then c x else a x)
+instead of ETA_AX whenever it applies
+
+or alternatively, run a simplification phase with
+`(if b then c else a) x = if b then c x else a x`
+after doing normal uneta
 *)
 
 (*
-val tm = ``foo a1 a2``
-val (rator,rand) = dest_comb tm
-val th = SIMP_CONV pure_ss [Ntimes (GSYM BETA_THM) 2] ``bar a1 a2 a3``;
+(* Examples of desired definitions *)
+val foo_defn = Hol_defn "foo"
+`foo M = do
+  b <- return F ;
+  if b then foo M else return () ;
+  return ()
+od`;
 
-val INVERSE_ETA_THM = save_thm(
-"INVERSE_ETA_THM",
-FUN_EQ_THM |>  Q.SPEC `f` |> Q.SPEC `\x. f x` |> EQ_IMP_RULE |> snd
-|> UNDISCH |> PROVE_HYP (BETA_THM |> GSYM |> Q.SPEC `f`)
-|> Q.GEN `f`);
+val ignore_rec_defn = Hol_defn "ignore_rec"
+`ignore_rec = STATE_OPTION_IGNORE_BIND
+              (λs. OPTION_MAP (combin$C $, s) (OPTION_GUARD (s T)))
+              (λs. ignore_rec ((T =+ ¬(s T)) s))`;
 
-val th1 = 
-((RATOR_CONV (SIMP_CONV pure_ss [Once INVERSE_ETA_THM])) THENC
-(fn tm => RATOR_CONV (ALPHA_CONV (snd(dest_comb tm))) tm))
-``bar a1``
-
-val th2 =
-((RATOR_CONV (SIMP_CONV pure_ss [Once INVERSE_ETA_THM])) THENC
-(fn tm => RATOR_CONV (ALPHA_CONV (snd(dest_comb tm))) tm))
-``bar a1 a2``
-
-SIMP_CONV pure_ss [Once th1] ``bar a1 a2``
-INVERSE_ETA_THM
-th2
-SUBS [th1] th2
-SUBS_OCCS [([2],th1)] th2
-GSYM (SUBST_MATCH th1 (GSYM th2))
-
-ONCE_REWRITE_RULE [th1] th2
-help"SUBS_OCCS";
-
-CONV_RULE BETA_CONV it
-help"SimpRHS"
-
-CONV_RULE (RAND_CONV (ONCE_DEPTH_CONV ETA_CONV)) th
-ETA_CONV
-ETA_RULE
-ETA
+val plen_defn = Hol_defn "plen"
+`plen M = do
+  (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
+  b <- EmptyListOfTerms M ;
+  if ¬b then do
+    M <- TailOfListOfTerms M ;
+    n <- plen M ;
+    return (n + 1)
+  od else return 0
+od`;
 *)
-
-(*
-val () = use "/home/ramana/HOL/src/tfl/src/RW.sml";
-val () = use "/home/ramana/HOL/src/tfl/src/Defn.sml";
-val () = RW.monitoring := true;
-*)
-
-(*
-fun GNOT_ABS_INVERSE_ETA_CONV t = let
-  val _ = assert (not o pairLib.is_pabs) t
-in
-  INVERSE_ETA_CONV (genvar(#1(dom_rng(type_of t)))) t
-end handle e => raise wrap_exn "" "GNOT_ABS_INVERSE_ETA_CONV" e
-
-fun VNOT_ABS_INVERSE_ETA_CONV s t = let
-  val _ = assert (not o pairLib.is_pabs) t
-  val vs = free_vars t
-in
-  INVERSE_ETA_CONV (prim_variant vs (mk_var (s,(#1(dom_rng(type_of t)))))) t
-end handle e => raise wrap_exn "" "VNOT_ABS_INVERSE_ETA_CONV" e
-
-fun VCOMB_INVERSE_ETA_CONV s t = let
-  val _ = assert is_comb t
-  val vs = free_vars t
-in
-  INVERSE_ETA_CONV (prim_variant vs (mk_var (s,(#1(dom_rng(type_of t)))))) t
-end handle e => raise wrap_exn "" "VCOMB_INVERSE_ETA_CONV" e
-*)
-
 
 (* Conversions for selectively applying (inverse) eta on certain constants *)
 
@@ -106,6 +81,7 @@ fun UNETA_CONV x t =
   end
   handle e => raise wrap_exn "" "UNETA_CONV" e
 
+(*
 fun UNETA_THESE_CONV ts x t = let
   val (rator,_) = strip_comb t
   val _ = assert (exists (can (C match_term rator))) ts
@@ -119,6 +95,7 @@ fun ETA_THESE_CONV ts t = let
 in
   ETA_CONV t
 end handle e => raise wrap_exn "" "ETA_THESE_CONV" e
+*)
 
 local
   (* Insert all definitions required to get Defn.parse_from_absyn here.
@@ -248,7 +225,7 @@ local
    in
      (Absyn.list_mk_conj (rev eql), rev fset)
    end
-
+in
   fun parse_absyn absyn0 =
    let val (absyn,fn_names) = elim_wildcards absyn0
        val restore_these = map (fn s => (s, Parse.hide s)) fn_names
@@ -261,17 +238,18 @@ local
      restore();
      (tm, fn_names)
    end
-in
-  fun qrule ts x q = let
-    val (t,_) = parse_absyn (Parse.Absyn q)
-    fun term_to_quote t = [QUOTE (term_to_string t) : term frag]
-    val th = DEPTH_CONV (UNETA_THESE_CONV ts x) t handle UNCHANGED => REFL t
-    val t = rhs (concl th)
-  in
-    term_to_quote t
-  end
-  fun unconv_rule ts = CONV_RULE (DEPTH_CONV (ETA_THESE_CONV ts))
 end
+
+(*
+fun qrule ts x q = let
+  val (t,_) = parse_absyn (Parse.Absyn q)
+  fun term_to_quote t = [QUOTE (term_to_string t) : term frag]
+  val th = DEPTH_CONV (UNETA_THESE_CONV ts x) t handle UNCHANGED => REFL t
+  val t = rhs (concl th)
+in
+  term_to_quote t
+end
+fun unconv_rule ts = CONV_RULE (DEPTH_CONV (ETA_THESE_CONV ts))
 
 val state_option_consts =
 [``STATE_OPTION_BIND``,
@@ -309,21 +287,277 @@ srw_tac [][combinTheory.APPLY_UPDATE_THM,OPTION_GUARD_def]);
 val (ignore_rec_def,ignore_rec_ind) =
 W (curry op ##) (unconv_rule state_option_consts) p;
 
-val plen_defn = Defn.Hol_defn "plen" (
-qrule state_option_consts ``s:state`` `
+task: write a conversion that recursively makes sure any occurrence of
+STATE_OPTION_BIND is of the form STATE_OPTION_BIND m (\v s. f) s, and any occurrence of
+STATE_OPTION_IGNORE_BIND is of the form STATE_OPTION_IGNORE_BIND m1 (\s. m2) s
+
+possible algorithm (do DEPTH_CONV on this):
+if you encounter an application of (unit)bind in the wrong form:
+if it has only 2 arguments, inverse eta yourself.
+if the second argument doesn't have enough bound variables, inverse eta as appropriate.
+
+better algorithm (incorporated DEPTH_CONV):
+entry point with no current argument:
+  perform inverse eta then recurse on rator with introduce variable as current argument
+entry point with a current argument s:
+  if tm = BIND m f then
+    m' <- recurse on m with no current argument
+    ensure f is of the form (\v s'. g) by inverse eta if necessary
+    g' <- recurse on g with current argument s'
+    return BIND m (\v s'. g') s
+  else if tm = IGNORE_BIND m1 m2 then
+    m1' <- recurse on m with no current argument
+    ensure m2 is of the form (\s'. g) by inverse eta if necessary
+    g' <- recurse on g with current argument s'
+    return IGNORE_BIND m1' (\s'. g') s
+  else if tm = (λx. f) then return f s
+  else if tm = x then return x s
+  else if tm = con then return con s
+  else if tm = (rator rand) then
+    ??????
+
+keep track of the current state argument
+if initially there is no state argument, do an inverse eta to get one, then recurse on rator and current argument
+if rator is a BIND form, do something special:
+  BIND m f s - recurse on m with no current argument
+               make sure f is of the form (\v s. g) by inverse eta if necessary
+               recurse on g with current argument s
+otherwise, remove the argument and push it into the recursion on the rator instead
+
+
+test on this:
+`plen M = do
+  (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
+  b <- EmptyListOfTerms M ;
+  if ¬b then do
+    M <- TailOfListOfTerms M ;
+    n <- plen M ;
+    return (n + 1)
+  od else return 0
+od`
+
+aka:
+`plen M =
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
+ (STATE_OPTION_BIND (EmptyListOfTerms M)
+   (λb. if ¬b then
+          STATE_OPTION_BIND (TailOfListOfTerms M)
+          (λM. STATE_OPTION_BIND (plen M)
+               (λn. STATE_OPTION_UNIT (n + 1)))
+        else STATE_OPTION_UNIT 0))`
+
+algorithm should give:
+`plen M =
+\s. STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
+ (\s.
+  STATE_OPTION_BIND (EmptyListOfTerms M)
+   (λb. \s.
+        (if ¬b then
+           \s.
+           STATE_OPTION_BIND (TailOfListOfTerms M)
+           (λM. \s.
+                STATE_OPTION_BIND (plen M)
+                (λn. \s. STATE_OPTION_UNIT (n + 1) s)
+                s)
+           s
+         else STATE_OPTION_UNIT 0)
+        s)
+  s)
+s`
+but this isn't good enough!
+need to BETA_RULE through the if !
+*)
+
+(*
+fun strip_type ty = let
+  val (dom,rng) = dom_rng ty
+in dom::(strip_type rng)
+end handle HOL_ERR _ => [ty]
+
+val arity = let
+  fun loop n ty = let
+    val (dom,rng) = dom_rng ty
+  in loop (n+1) rng end
+  handle HOL_ERR _ => n
+in loop 0 end
+*)
+
+(* make sure tm is an abstraction of at least (length vs) variables, using
+variables from vs (in reverse order) for inverse eta-expansion if necessary.
+if an element of vs is NONE, use a genvar instead *)
+
+local
+  fun GEN_UNETA_CONV NONE tm = let
+    val (dom,_) = dom_rng (type_of tm)
+  in UNETA_CONV (genvar dom) tm end
+    | GEN_UNETA_CONV (SOME x) tm = UNETA_CONV x tm
+in
+  fun VLIST_CONV vs tm = let
+    val (ws,m) = strip_abs tm
+    val vs = List.drop(vs,length ws)
+  in
+    STRIP_BINDER_CONV NONE (EVERY_CONV (map GEN_UNETA_CONV vs)) tm
+  end
+end
+
+local
+  val unitbind = ``STATE_OPTION_IGNORE_BIND :
+    ('a,'b) state_option -> ('a,'c) state_option -> ('a,'c) state_option``
+  val bind = ``STATE_OPTION_BIND :
+    ('a,'b) state_option -> ('b -> ('a,'c) state_option) -> ('a,'c) state_option``
+  fun f (ls,bind) s (rator,(_::_::rest)) = let
+    val (_,t) = match_term bind rator
+    val ty = valOf (subst_assoc (equal alpha) t) handle Option => alpha
+    val conv = RAND_CONV (VLIST_CONV (ls@[SOME s]))
+  in
+    case rest of
+      [] => conv THENC (UNETA_CONV s)
+    | _  => conv
+  end
+in
+  fun state_option_conv s tm = let
+    val p as (rator,_) = strip_comb tm
+    val _ = assert is_const rator
+  in
+    trye (f ([],unitbind) s) p handle HOL_ERR _ =>
+    with_exn (f ([NONE],bind) s) p
+    (mk_HOL_ERR "" "state_option_conv" "Not an application of a state_option bind")
+  end tm
+  fun state_option_unconv ty tm = let
+    val (v,m) = dest_abs tm
+  in if type_of v = ty then ETA_CONV tm else let
+    val (v,m) = dest_abs m
+  in if type_of v = ty then ABS_CONV ETA_CONV tm else
+    raise mk_HOL_ERR "" "state_option_unconv" "Not a state_option abstraction"
+  end end
+end
+
+val APPLY_COND_THM = Q.store_thm(
+"APPLY_COND_THM",
+`(if b then c else a) x = if b then c x else a x`,
+srw_tac [][]);
+
+fun qrule x q = let
+  val (t,_) = parse_absyn (Parse.Absyn q)
+  fun term_to_quote t = [QUOTE (term_to_string t) : term frag]
+  val conv = DEPTH_CONV (state_option_conv x) THENC
+             PURE_REWRITE_CONV [APPLY_COND_THM]
+  val th = conv t handle UNCHANGED => REFL t
+  val t = rhs (concl th)
+in
+  term_to_quote t
+end
+
+fun unconv_rule x = CONV_RULE (DEPTH_CONV (state_option_unconv x))
+
+(* state_option_conv ``s:state`` ``STATE_OPTION_BIND (EmptyListOfTerms M) (λb. STATE_OPTION_UNIT ())`` *)
+
+(*
+(DEPTH_CONV (state_option_conv ``s:state``) o Term)
+`plen M =
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
+ (STATE_OPTION_BIND (EmptyListOfTerms M)
+   (λb. if ¬b then
+          STATE_OPTION_BIND (TailOfListOfTerms M)
+          (λM. STATE_OPTION_BIND (plen M)
+               (λn. STATE_OPTION_UNIT (n + 1)))
+        else STATE_OPTION_UNIT 0))`
+*)
+
+val foo_defn = Defn.Hol_defn "foo" (
+qrule ``s:'a`` `
+foo M =
+  STATE_OPTION_BIND (STATE_OPTION_UNIT F)
+  (λb. STATE_OPTION_IGNORE_BIND
+         (if b then foo M else STATE_OPTION_UNIT ())
+         (STATE_OPTION_UNIT ()))`);
+(* prove the termination goal *)
+val p = Defn.tprove (foo_defn,
+WF_REL_TAC `REMPTY` >>
+srw_tac [][STATE_OPTION_UNIT_def]);
+(* extract the theorems the user wants to see *)
+val (foo_def,foo_ind) = W (curry op ##) (unconv_rule ``:'a``) p;
+
+(* Same procedure works for this example.
+A separate bug is that you can't remove the s argument from both sides of this
+quote. *)
+val ignore_rec_defn = Defn.Hol_defn "ignore_rec" (
+qrule ``s:'a`` `
+  ignore_rec s = STATE_OPTION_IGNORE_BIND
+                 (λs. OPTION_MAP (combin$C $, s) (OPTION_GUARD (s T)))
+                 (λs. ignore_rec ((T =+ ¬(s T)) s))
+                 s`);
+val p = Defn.tprove (ignore_rec_defn,
+WF_REL_TAC `measure (λs. if s T then 1 else 0)` >>
+srw_tac [][combinTheory.APPLY_UPDATE_THM,OPTION_GUARD_def]);
+val (ignore_rec_def,ignore_rec_ind) =
+W (curry op ##) (unconv_rule alpha) p;
+
+(*
+Ideally, TFL would automatically try inverse eta to match congruences itself!
+
+(DEPTH_CONV (state_option_conv ``s:state``) o Term ) `
   plen M = do
     (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
     b <- EmptyListOfTerms M ;
-    n <- if ¬ b then do
+    if ¬ b then do
       M <- TailOfListOfTerms M ;
-      plen M
-    od else return 0 ;
-    return (n + 1)
+      n <- plen M ;
+      return (n + 1)
+    od else return 0
+  od`
+
+val plen_defn = Defn.Hol_defn "plen"
+`plen M = \s.
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls))
+      s)
+ (λs. STATE_OPTION_BIND
+      (EmptyListOfTerms M)
+      (λb s. if ¬ b
+             then STATE_OPTION_BIND
+                  (TailOfListOfTerms M)
+                  (λM s. STATE_OPTION_BIND
+                         (plen M)
+                         (λn s. STATE_OPTION_UNIT (n+1) s)
+                         s)
+                  s
+             else (STATE_OPTION_UNIT 0 s))
+      s)
+ s`
+*)
+
+val plen_defn = Defn.Hol_defn "plen" (
+qrule ``s:state`` `
+  plen M = do
+    (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
+    b <- EmptyListOfTerms M ;
+    if ¬ b then do
+      M <- TailOfListOfTerms M ;
+      n <- plen M ;
+      return (n + 1)
+    od else return 0
   od`)
 val p = Defn.tprove (plen_defn,
-(* I haven't proved termination here yet, because it's a lot more difficult
-here, but I am semi-confident that the termination goal is (at last) provable
-*)
+srw_tac [boolSimps.DNF_ss][pairTheory.FORALL_PROD] >>
+srw_tac [][STATE_OPTION_LIFT_def,OPTION_GUARD_def] >>
+WF_REL_TAC `measure (λM. LEAST n. ∃s ls. list_of_List embed_Term s M ls ∧ (n = LENGTH ls))` >>
+srw_tac [][] >>
+numLib.LEAST_ELIM_TAC >>
+srw_tac [][] >- metis_tac [] >>
+fsrw_tac [boolSimps.DNF_ss][] >>
+`¬ (LENGTH ls < LENGTH ls')` by METIS_TAC [] >>
+numLib.LEAST_ELIM_TAC >>
+srw_tac [][] >- (
+  fsrw_tac [][TailOfList_def,STATE_OPTION_BIND_def,pairTheory.UNCURRY] >>
+  Cases_on `M` >> fsrw_tac [][raw_lookup_def,STATE_OPTION_IGNORE_BIND_def] >>
+  fsrw_tac [][STATE_OPTION_UNIT_def] >>
+  METIS_TAC [] ) >>
+would want some TailOfList correctness results here to make things easier...
+
 )
 val (plen_def,plen_ind) =
 W (curry op ##) (unconv_rule state_option_consts) p;
@@ -331,6 +565,21 @@ W (curry op ##) (unconv_rule state_option_consts) p;
 (* You can then use save_thm to save the right form of the definition and
 induction. There are no extra flags or tags necessary to completely emulate
 Define, right? *)
+
+SIMP_CONV (srw_ss()) [] (Term  `ifcong n = (if n = 0 then EVERY ifcong else NULL) [1]`);
+DefnBase.read_congs()
+
+val ifcong_defn = Defn.Hol_defn "ifcong"
+  `ifcong n = (if n = 0 then EVERY ifcong else NULL) [1]`;
+
+val ifcong2_defn = Defn.Hol_defn "ifcong2"
+  `ifcong2 n = (if n = 0 then (λls. EVERY ifcong2 ls) else NULL) [1]`;
+
+val ifcong3_defn = Defn.Hol_defn "ifcong3"
+  `ifcong3 n = (if n = 0 then (λls. (ls = [1]) ∧ EVERY ifcong3 ls) else NULL) [1]`;
+
+foo 0 = EVERY foo [1] = foo 1 = NULL [1] = F
+foo 1 = NULL [1] = F
 
 (*
 val fail = Hol_defn "ignore_rec" Term`
