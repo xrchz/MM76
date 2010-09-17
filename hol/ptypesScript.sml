@@ -1127,4 +1127,47 @@ fsrw_tac [][lookup_succeeds] >> srw_tac [][] >>
 EQ_TAC >> srw_tac [][] >>
 fsrw_tac [][Once list_of_AuxList_cases]);
 
+val TailOfList_TL = Q.store_thm(
+"TailOfList_TL",
+`wfstate s ∧ is_embed emb ∧
+ list_of_List emb s l (h::ls) ⇒
+ ∃s'. (TailOfList emb l s = SOME (l,s')) ∧
+      (list_of_List emb s' l ls)`,
+simp_tac (srw_ss()) [SimpL implication,list_of_List_def,Once list_of_AuxList_cases] >>
+srw_tac [DNF_ss][list_of_List_def,TailOfList_def,UNCURRY,EXISTS_PROD] >>
+imp_res_tac lookup_state >>
+srw_tac [][] >> fsrw_tac [][] >> srw_tac [][] >>
+qmatch_assum_rename_tac `lookup emb lv.first s = SOME (av,s)` [] >>
+`∃s'. assign emb l (List av.tail lv.last) s = SOME ((),s')` by (
+  Cases_on `l` >> srw_tac [][] >>
+  fsrw_tac [][wfstate_def,FLOOKUP_DEF] >>
+  PROVE_TAC [] ) >>
+srw_tac [][] >>
+`∃s''. dispose lv.first s' = SOME ((),s'')` by (
+  Cases_on `lv.first` >> srw_tac [][] ) >>
+srw_tac [][] >>
+`lookup emb l s' = SOME (List av.tail lv.last,s')` by (
+  `is_embed (embed_List emb)` by srw_tac [][is_embed_List] >>
+  imp_res_tac lookup_assign >>
+  fsrw_tac [][] ) >>
+`lookup emb l s'' = SOME (List av.tail lv.last,s'')` by (
+  imp_res_tac (lookup_dispose |> Q.GEN `p1` |> Q.ISPEC `lv.first`
+                              |> Q.GEN `p2` |> Q.ISPEC `l:'a List ptr`) >>
+  pop_assum (qspecl_then [`l`,`embed_List emb`] mp_tac) >>
+  `ptr_to_num lv.first ≠ ptr_to_num l` by (
+    fsrw_tac [][lookup_succeeds] >>
+    spose_not_then strip_assume_tac >>
+    fsrw_tac [][type_inductive] ) >>
+  srw_tac [][] ) >>
+srw_tac [][] >>
+`s' = s with store updated_by (ptr_to_num l =+ (inject_List (List av.tail lv.last)))` by (
+  Cases_on `l` >> fsrw_tac [][FLOOKUP_DEF] >>
+  qpat_assum `n ∈ FDOM s.store` assume_tac >> fsrw_tac [][] ) >>
+`s'' = s' with store updated_by (λs. s \\ ptr_to_num lv.first)` by (
+  Cases_on `lv.first` >> fsrw_tac [][] ) >>
+
+list_of_AuxList_dispose_unreachable
+
+list_of_AuxList_assign_unreachable
+
 val _ = export_theory ()
