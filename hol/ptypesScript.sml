@@ -1169,6 +1169,34 @@ Cases_on `v` >> fsrw_tac [][] >>
 qpat_assum `X = FST x` (assume_tac o SYM) >>
 fsrw_tac [][] >> PROVE_TAC [] );
 
+val list_of_AuxList_imp_tailR_antisymmetric = Q.store_thm(
+"list_of_AuxList_imp_tailR_antisymmetric",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        ∀m. tailR s.store l m (ptr_to_num p) ∧
+            tailR s.store l (ptr_to_num p) m ⇒
+            (m = ptr_to_num p)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+srw_tac [][UNCURRY] >- (
+  fsrw_tac [][Once RTC_CASES2,tailR1_def] ) >>
+full_simp_tac std_ss [] >>
+srw_tac [][] >>
+qmatch_assum_rename_tac `lookup emb p s = SOME x` [] >>
+`tailR s.store l (ptr_to_num (FST x).tail) (ptr_to_num p)` by (
+  match_mp_tac RTC_SUBSET >>
+  srw_tac [][tailR1_def,ptr_equality] >>
+  fsrw_tac [][lookup_succeeds] >>
+  Cases_on `v` >> fsrw_tac [][] >>
+  qpat_assum `X = FST x` (assume_tac o SYM) >>
+  fsrw_tac [][] ) >>
+`tailR s.store l (ptr_to_num (FST x).tail) m` by PROVE_TAC [RTC_TRANSITIVE,transitive_def] >>
+qpat_assum `tailR s.store l m (ptr_to_num p)` mp_tac >>
+simp_tac (srw_ss()) [Once RTC_CASES2] >>
+srw_tac [][tailR1_def] >>
+fsrw_tac [][lookup_succeeds] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+fsrw_tac [][] >>
+PROVE_TAC [RTC_TRANSITIVE,transitive_def]);
+
 val TailOfList_TL = Q.store_thm(
 "TailOfList_TL",
 `wfstate s ∧ is_embed emb ∧
