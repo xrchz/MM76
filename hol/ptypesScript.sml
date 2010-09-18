@@ -596,6 +596,36 @@ first_x_assum match_mp_tac >>
   srw_tac [][tailR1_def,reach1_cases,ptr_equality] ) >>
 PROVE_TAC [headR_def,RTC_RULES_RIGHT1]);
 
+val list_of_AuxList_remove_unreachable = Q.store_thm(
+"list_of_AuxList_remove_unreachable",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        ¬ headR s.store l m (ptr_to_num p) ∧ ¬ tailR s.store l m (ptr_to_num p) ⇒
+        list_of_AuxList emb (s with <|store updated_by (combin$C $\\ m); cell_type updated_by (m =+ a)|>) l p ls`,
+ho_match_mp_tac list_of_AuxList_ind >>
+conj_tac >- srw_tac [][Once list_of_AuxList_cases] >>
+rpt strip_tac >>
+srw_tac [][Once list_of_AuxList_cases] >>
+fsrw_tac [][UNCURRY] >> srw_tac [][] >>
+fsrw_tac [][] >> srw_tac [][] >>
+`ptr_to_num p ≠ m` by PROVE_TAC [RTC_RULES] >>
+srw_tac [DNF_ss][EXISTS_PROD,lookup_succeeds,DOMSUB_FLOOKUP_THM,APPLY_UPDATE_THM] >>
+fsrw_tac [][lookup_succeeds] >>
+qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME v` [] >>
+qmatch_assum_rename_tac `project_AuxList v = SOME (FST x)` [] >>
+Cases_on `v` >> fsrw_tac [][] >>
+qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num p) = SOME (AuxList_value nh nt)` [] >>
+`headR s.store l nh (ptr_to_num p)` by (
+  srw_tac [][Once RTC_CASES2,headR_def,tailR1_def,ptr_equality,cell_reach1_def,reach1_cases] >>
+  PROVE_TAC [] ) >>
+`m ≠ nh` by PROVE_TAC [] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+qpat_assum `SND x = s` assume_tac >>
+fsrw_tac [][] >>
+first_x_assum match_mp_tac >>
+`tailR1 s.store l nt (ptr_to_num p)` by (
+  srw_tac [][tailR1_def,reach1_cases,ptr_equality] ) >>
+PROVE_TAC [headR_def,RTC_RULES_RIGHT1]);
+
 val tailR_assign_unreachable = Q.store_thm(
 "tailR_assign_unreachable",
 `¬tailR s l r n ⇒ (tailR (s |+ (r,v)) l m n ⇔ tailR s l m n)`,
