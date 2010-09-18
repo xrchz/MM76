@@ -1157,6 +1157,18 @@ fsrw_tac [][lookup_succeeds] >> srw_tac [][] >>
 EQ_TAC >> srw_tac [][] >>
 fsrw_tac [][Once list_of_AuxList_cases]);
 
+val list_of_AuxList_imp_tailR = Q.store_thm(
+"list_of_AuxList_imp_tailR",
+`∀p ls. list_of_AuxList emb s l p ls ⇒ tailR s.store l (ptr_to_num l) (ptr_to_num p)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+srw_tac [][UNCURRY] >>
+fsrw_tac [][] >> srw_tac [][] >>
+srw_tac [][Once RTC_CASES2,tailR1_def] >>
+fsrw_tac [][lookup_succeeds] >>
+Cases_on `v` >> fsrw_tac [][] >>
+qpat_assum `X = FST x` (assume_tac o SYM) >>
+fsrw_tac [][] >> PROVE_TAC [] );
+
 val TailOfList_TL = Q.store_thm(
 "TailOfList_TL",
 `wfstate s ∧ is_embed emb ∧
