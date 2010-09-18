@@ -1197,6 +1197,18 @@ qpat_assum `X = FST x` (assume_tac o SYM) >>
 fsrw_tac [][] >>
 PROVE_TAC [RTC_TRANSITIVE,transitive_def]);
 
+val list_of_AuxList_unique = Q.store_thm(
+"list_of_AuxList_unique",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+        ∀ls'. list_of_AuxList emb s l p ls' ⇒ (ls' = ls)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+srw_tac [][UNCURRY] >-
+  fsrw_tac [][Once list_of_AuxList_cases] >>
+fsrw_tac [][] >> srw_tac [][] >>
+pop_assum mp_tac >>
+simp_tac (srw_ss()) [Once list_of_AuxList_cases] >>
+srw_tac [][UNCURRY]);
+
 val TailOfList_TL = Q.store_thm(
 "TailOfList_TL",
 `wfstate s ∧ is_embed emb ∧
