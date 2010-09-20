@@ -1,6 +1,43 @@
-open HolKernel boolLib bossLib Parse monadsyntax ptypes_definitionsTheory lcsymtacs state_optionTheory option_guardTheory
+open HolKernel boolLib boolSimps SatisfySimps bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory option_guardTheory
 
 val _ = new_theory "reduce"
+
+val plen_defn = Hol_defn "plen"
+`plen M s =
+  monad_unitbind
+    (λs1.
+       STATE_OPTION_LIFT
+         (OPTION_GUARD
+            (wfstate s1 ∧ ∃ls. list_of_List embed_Term s1 M ls)) s1)
+    (λs2.
+       monad_bind (λs3. EmptyListOfTerms M s3)
+         (λb s4.
+            if ¬b then
+              monad_bind (λs5. TailOfListOfTerms M s5)
+                (λM s6.
+                   monad_bind (\s7. plen M s7) (λn s8. return (n + 1) s8) s6)
+                s4
+            else
+              return 0 s4) s2) s`;
+
+val thms = Defn.tprove(plen_defn,
+srw_tac [DNF_ss][pairTheory.FORALL_PROD] >>
+srw_tac [][STATE_OPTION_LIFT_def,OPTION_GUARD_def] >>
+WF_REL_TAC `measure (λ(M,s). LENGTH (@ls. list_of_List embed_Term s M ls))` >>
+srw_tac [][] >>
+imp_res_tac EmptyList_NULL >>
+fsrw_tac [][] >> srw_tac [][] >>
+Cases_on `ls` >> fsrw_tac [][] >> srw_tac [][] >>
+qmatch_assum_rename_tac `list_of_List embed_Term s M (h::ls)` [] >>
+qmatch_assum_rename_tac `TailOfListOfTerms M s = SOME (M',s')` [] >>
+`list_of_List embed_Term s' M' ls` by (
+  ASSUME_TAC is_embed_Term >>
+  imp_res_tac TailOfList_TL >>
+  fsrw_tac [][] >> srw_tac [][] ) >>
+ntac 2 SELECT_ELIM_TAC >>
+srw_tac [SATISFY_ss][] >>
+imp_res_tac list_of_List_unique >>
+srw_tac [][]);
 
 (*
 HOW DO YOU TURN
