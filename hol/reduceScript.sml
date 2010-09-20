@@ -82,6 +82,14 @@ after doing normal uneta
 
 (*
 (* Examples of desired definitions *)
+val sfoo_defn = Hol_defn "sfoo"
+`sfoo = do
+  s1 <- STATE_OPTION_GET ;
+  s2 <- STATE_OPTION_GET ;
+  if s1 = s2 then return () else sfoo ;
+  return ()
+od`;
+
 val foo_defn = Hol_defn "foo"
 `foo M = do
   b <- return F ;
@@ -424,7 +432,6 @@ in loop 0 end
 (* make sure tm is an abstraction of at least (length vs) variables, using
 variables from vs (in reverse order) for inverse eta-expansion if necessary.
 if an element of vs is NONE, use a genvar instead *)
-
 local
   fun GEN_UNETA_CONV NONE tm = let
     val (dom,_) = dom_rng (type_of tm)
@@ -445,63 +452,122 @@ local
   val bind = ``STATE_OPTION_BIND :
     ('a,'b) state_option -> ('b -> ('a,'c) state_option) -> ('a,'c) state_option``
   fun f (ls,bind) s (rator,(_::_::rest)) = let
-    val (_,t) = match_term bind rator
-    val ty = valOf (subst_assoc (equal alpha) t) handle Option => alpha
-    val conv = RAND_CONV (VLIST_CONV (ls@[SOME s]))
+    val _ = assert (can (match_term bind)) rator
+    val conv = RAND_CONV (VLIST_CONV (ls@[SOME s])) THENC
+               RATOR_CONV (RAND_CONV (VLIST_CONV [SOME s]))
   in
     case rest of
       [] => conv THENC (UNETA_CONV s)
     | _  => conv
   end
 in
-  fun state_option_conv s tm = let
+  fun uneta_bind_conv s tm = let
     val p as (rator,_) = strip_comb tm
     val _ = assert is_const rator
   in
     trye (f ([],unitbind) s) p handle HOL_ERR _ =>
     with_exn (f ([NONE],bind) s) p
-    (mk_HOL_ERR "" "state_option_conv" "Not an application of a state_option bind")
+    (mk_HOL_ERR "" "uneta_bind_conv" "Not an application of a state_option bind")
   end tm
-  fun state_option_unconv ty tm = let
-    val (v,m) = dest_abs tm
-  in if type_of v = ty then ETA_CONV tm else let
-    val (v,m) = dest_abs m
-  in if type_of v = ty then ABS_CONV ETA_CONV tm else
-    raise mk_HOL_ERR "" "state_option_unconv" "Not a state_option abstraction"
-  end end
 end
+
+fun eta_bind_conv x = let
+  val (s,ty) = dest_var x
+  fun check_eta tm = let
+    val (v,m) = dest_abs tm
+    val (vs,vt) = dest_var v
+  in if String.isPrefix s vs andalso vt = ty
+     then ETA_CONV tm else fail()
+  end
+in
+  check_eta ORELSEC (ABS_CONV check_eta)
+end
+
+(*
+fun add_state_arg_conv x tm = let
+  val call = lhs tm
+  val (f,args) = strip_comb call
+  fun uneta_f tm = let
+    val (f',_) = strip_comb tm
+    val _ = assert (equal f) f'
+  in UNETA_CONV x end tm
+in
+  (RAND_CONV (DEPTH_CONV uneta_f)) THENC
+  (X_FUN_EQ_CONV x)
+end tm
+*)
+
+(*
+fun basename s = let open Substring Char in
+  case !Globals.priming of
+    NONE => string (dropr (equal #"'") (full s))
+  | SOME u => let
+      val b = dropr isDigit (full s)
+    in
+      if isSuffix u b then let
+        val bz = size b
+      in if String.size s <> bz then
+           string (slice (b, 0, SOME (bz - String.size u)))
+         else s
+      end else s
+    end
+end
+*)
 
 val APPLY_COND_THM = Q.store_thm(
 "APPLY_COND_THM",
 `(if b then c else a) x = if b then c x else a x`,
 srw_tac [][]);
 
+val ETA_COND = Q.store_thm(
+"ETA_COND",
+`((if b then (λx. cf x) x else a) = (if b then cf x else a)) ∧
+ ((if b then c else (λx. af x) x) = (if b then c else af x))`,
+srw_tac [][]);
+
 fun qrule x q = let
   val (t,_) = parse_absyn (Parse.Absyn q)
   fun term_to_quote t = [QUOTE (term_to_string t) : term frag]
-  val conv = DEPTH_CONV (state_option_conv x) THENC
-             PURE_REWRITE_CONV [APPLY_COND_THM]
+  val conv = DEPTH_CONV (uneta_bind_conv x) THENC
+             PURE_REWRITE_CONV [APPLY_COND_THM,ETA_COND] THENC
+             (X_FUN_EQ_CONV x) THENC
+             QUANT_CONV (RAND_CONV LIST_BETA_CONV)
   val th = conv t handle UNCHANGED => REFL t
-  val t = rhs (concl th)
+  val (_,t) = strip_forall (rhs (concl th))
+  val _ = say(term_to_backend_string t^"\n")
 in
   term_to_quote t
 end
 
-fun unconv_rule x = CONV_RULE (DEPTH_CONV (state_option_unconv x))
+fun unconv_ind x = CONV_RULE (PURE_REWRITE_CONV [SYM APPLY_COND_THM] THENC DEPTH_CONV (eta_bind_conv x))
+fun unconv_def x = EXT o GEN x o (unconv_ind x)
 
-(* state_option_conv ``s:state`` ``STATE_OPTION_BIND (EmptyListOfTerms M) (λb. STATE_OPTION_UNIT ())`` *)
+val STATE_OPTION_GET_def = Define`
+  STATE_OPTION_GET : ('a,'a) state_option
+  s = SOME (s,s)`;
+
+val sfoo_defn = Hol_defn "sfoo"(
+qrule ``s:'a``
+`sfoo = do
+  s1 <- STATE_OPTION_GET ;
+  s2 <- STATE_OPTION_GET ;
+  if s1 = s2 then return () else sfoo ;
+  return ()
+od`);
+val p = Defn.tprove(sfoo_defn,
+WF_REL_TAC `REMPTY` >>
+srw_tac [][STATE_OPTION_GET_def] >>
+METIS_TAC []);
+val (sfoo_def,sfoo_ind) = (unconv_def ``s:'a`` ## unconv_ind ``s:'a``) p;
 
 (*
-(DEPTH_CONV (state_option_conv ``s:state``) o Term)
-`plen M =
- STATE_OPTION_IGNORE_BIND
- (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s)
- (STATE_OPTION_BIND (EmptyListOfTerms M)
-   (λb. if ¬b then
-          STATE_OPTION_BIND (TailOfListOfTerms M)
-          (λM. STATE_OPTION_BIND (plen M)
-               (λn. STATE_OPTION_UNIT (n + 1)))
-        else STATE_OPTION_UNIT 0))`
+why does this fail?
+val sfoo_defn = Hol_defn "sfoo"
+`sfoo s = STATE_OPTION_BIND STATE_OPTION_GET
+          (λs1 s. STATE_OPTION_BIND STATE_OPTION_GET
+          (λs2 s. STATE_OPTION_IGNORE_BIND
+                (\s. if s1 = s2 then STATE_OPTION_UNIT () s else sfoo s)
+                (STATE_OPTION_UNIT ()) s) s) s`
 *)
 
 val foo_defn = Defn.Hol_defn "foo" (
@@ -511,34 +577,36 @@ foo M =
   (λb. STATE_OPTION_IGNORE_BIND
          (if b then foo M else STATE_OPTION_UNIT ())
          (STATE_OPTION_UNIT ()))`);
-(* prove the termination goal *)
 val p = Defn.tprove (foo_defn,
 WF_REL_TAC `REMPTY` >>
 srw_tac [][STATE_OPTION_UNIT_def]);
-(* extract the theorems the user wants to see *)
-val (foo_def,foo_ind) = W (curry op ##) (unconv_rule ``:'a``) p;
+val (foo_def,foo_ind) = (unconv_def ``s:'a`` ## unconv_ind ``s:'a``) p;
 
-(* Same procedure works for this example.
-A separate bug is that you can't remove the s argument from both sides of this
-quote. *)
+val s = ``s:bool->bool``;
 val ignore_rec_defn = Defn.Hol_defn "ignore_rec" (
-qrule ``s:'a`` `
-  ignore_rec s = STATE_OPTION_IGNORE_BIND
-                 (λs. OPTION_MAP (combin$C $, s) (OPTION_GUARD (s T)))
-                 (λs. ignore_rec ((T =+ ¬(s T)) s))
-                 s`);
+qrule s `
+  ignore_rec = STATE_OPTION_IGNORE_BIND
+               (λs. OPTION_MAP (combin$C $, s) (OPTION_GUARD (s T)))
+               (λs. ignore_rec ((T =+ ¬(s T)) s))`);
 val p = Defn.tprove (ignore_rec_defn,
 WF_REL_TAC `measure (λs. if s T then 1 else 0)` >>
 srw_tac [][combinTheory.APPLY_UPDATE_THM,OPTION_GUARD_def]);
-val (ignore_rec_def,ignore_rec_ind) =
-W (curry op ##) (unconv_rule alpha) p;
+val (ignore_rec_def,ignore_rec_ind) = (unconv_def s ## unconv_ind s) p;
 
 (*
 Ideally, TFL would automatically try inverse eta to match congruences itself!
 
-(DEPTH_CONV (state_option_conv ``s:state``) o Term ) `
+  val conv = DEPTH_CONV (uneta_bind_conv x) THENC
+             PURE_REWRITE_CONV [APPLY_COND_THM] THENC
+             (X_FUN_EQ_CONV x) THENC
+             QUANT_CONV (RAND_CONV LIST_BETA_CONV)
+Parse.hide"plen"
+((DEPTH_CONV (uneta_bind_conv s) THENC
+  PURE_REWRITE_CONV [APPLY_COND_THM] THENC
+  (X_FUN_EQ_CONV s) THENC
+  QUANT_CONV (RAND_CONV LIST_BETA_CONV)) o Term ) `
   plen M = do
-    (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
+    (λs. STATE_OPTION_LIFT (OPTION_GUARD (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s) ;
     b <- EmptyListOfTerms M ;
     if ¬ b then do
       M <- TailOfListOfTerms M ;
@@ -546,11 +614,31 @@ Ideally, TFL would automatically try inverse eta to match congruences itself!
       return (n + 1)
     od else return 0
   od`
+Parse.reveal"plen"
 
+val plen_defn = Defn.Hol_defn "plen"
+`plen M s =
+ STATE_OPTION_IGNORE_BIND
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls))
+      s)
+ (λs. STATE_OPTION_BIND
+      (EmptyListOfTerms M)
+      (λb s. if ¬ b
+             then STATE_OPTION_BIND
+                  (TailOfListOfTerms M)
+                  (λM s. STATE_OPTION_BIND
+                         (plen M)
+                         (λn s. STATE_OPTION_UNIT (n+1) s)
+                         s)
+                  s
+             else (STATE_OPTION_UNIT 0 s))
+      s)
+ s`
+STATE_OPTION_BIND_cong
 val plen_defn = Defn.Hol_defn "plen"
 `plen M = \s.
  STATE_OPTION_IGNORE_BIND
- (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls))
+ (λs. STATE_OPTION_LIFT (OPTION_GUARD (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls))
       s)
  (λs. STATE_OPTION_BIND
       (EmptyListOfTerms M)
@@ -567,10 +655,74 @@ val plen_defn = Defn.Hol_defn "plen"
  s`
 *)
 
+val STATE_OPTION_BIND_def_without_UNCURRY = Q.prove(
+`monad_bind m f s = OPTION_BIND (m s) (λp. f (FST p) (SND p))`,
+Cases_on `m s` >> srw_tac [][STATE_OPTION_BIND_def,pairTheory.UNCURRY]);
+
+val STATE_OPTION_IGNORE_BIND_def_without_o = Q.prove(
+`monad_unitbind m1 m2 s = OPTION_BIND (m1 s) (λp. m2 (SND p))`,
+Cases_on `m1 s` >> srw_tac [][STATE_OPTION_IGNORE_BIND_def]);
+
+val _ = delete_const "nonrec";
+val _ = delete_binding "nonrec_curried_def";
+val _ = delete_binding "nonrec_tupled_primitive_def";
+
+val th = (DEPTH_CONV (uneta_bind_conv ``s:num->num``)
+ THENC SIMP_CONV pure_ss [
+   APPLY_COND_THM,
+   STATE_OPTION_BIND_def_without_UNCURRY,
+   STATE_OPTION_IGNORE_BIND_def_without_o]
+ THENC
+(X_FUN_EQ_CONV ``s:num->num``) THENC
+(DEPTH_CONV BETA_CONV))
+``nonrec M = do
+    (λs. if M ≠ 0 ∧ (s M = 0) then SOME ((), s) else NONE) ;
+    n <- (λs. if M = 0 then NONE else SOME (s M, s)) ;
+    if n ≠ 0 then nonrec M else return 0
+  od``
+val (_,t) = strip_forall (rhs (concl th));
+val nonrec_defn = Hol_defn "nonrec" [QUOTE (term_to_string t)];
+
+(* NOTE: MUST USE DIFFERENT BOUND NAMES!! *)
+val nonrec_defn = Hol_defn "nonrec"
+`nonrec b f = OPTION_BIND (if b ∧ ¬ f b then SOME ((),f) else NONE)
+              (λp'. OPTION_BIND (if ¬ b then NONE else SOME (SND p' b, SND p'))
+                   (λp. if FST p then nonrec b (SND p) else SOME ((), SND p)))`;
+Defn.tprove (nonrec_defn,
+WF_REL_TAC `REMPTY` >>
+srw_tac [][] >>
+Cases_on `f = p_2` >> srw_tac [][] >>
+Cases_on `f T` >> srw_tac [][] >>
+Cases_on `b` >> srw_tac [][]);
+
+val _ = delete_const "plen";
+val _ = delete_binding "plen_curried_def";
+val _ = delete_binding "plen_tupled_primitive_def";
+
+val th = (DEPTH_CONV (uneta_bind_conv ``s:state``)
+ THENC SIMP_CONV pure_ss [
+   STATE_OPTION_LIFT_def,
+   OPTION_GUARD_def,
+   APPLY_COND_THM,
+   STATE_OPTION_BIND_def_without_UNCURRY,
+   STATE_OPTION_IGNORE_BIND_def_without_o]
+ THENC
+(X_FUN_EQ_CONV ``s:state``) THENC (DEPTH_CONV BETA_CONV) (*QUANT_CONV (RAND_CONV LIST_BETA_CONV)*))
+``plen M = do
+    (λs. STATE_OPTION_LIFT (OPTION_GUARD (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s) ;
+    b <- EmptyListOfTerms M ;
+    if ¬ b then do
+      M <- TailOfListOfTerms M ;
+      n <- plen M ;
+      return (n + 1)
+    od else return 0
+  od``
+
+val s = ``s:state``;
 val plen_defn = Defn.Hol_defn "plen" (
-qrule ``s:state`` `
+qrule s `
   plen M = do
-    (λs. STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls)) s) ;
+    (λs. STATE_OPTION_LIFT (OPTION_GUARD (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s) ;
     b <- EmptyListOfTerms M ;
     if ¬ b then do
       M <- TailOfListOfTerms M ;
@@ -581,7 +733,20 @@ qrule ``s:state`` `
 val p = Defn.tprove (plen_defn,
 srw_tac [boolSimps.DNF_ss][pairTheory.FORALL_PROD] >>
 srw_tac [][STATE_OPTION_LIFT_def,OPTION_GUARD_def] >>
-WF_REL_TAC `measure (λM. LEAST n. ∃s ls. list_of_List embed_Term s M ls ∧ (n = LENGTH ls))` >>
+qho_match_abbrev_tac `?R. WF R ∧ !l1 s0 s1 l2 s2. P s0 s1 s2 l2 l1 ⇒ R l2 l1` >>
+reverse (WF_REL_TAC `λl1 l2. ∃s0 s1 s2. P s0 s1 s2 l1 l2`) >-
+  srw_tac [SatisfySimps.SATISFY_ss][] >>
+srw_tac [boolSimps.DNF_ss][Abbr`P`] >>
+
+match_mp_tac relationTheory.WF_SUBSET >>
+
+match_mp_tac relationTheory.WF_inv_image
+WF_REL_TAC `measure (λl2. LEAST n. (∃s0 s1 s2 l1. P s0 s1 s2 l1 l2) ∧ (∃ls. list_of_List embed_Term s0 l2 ls ∧ (n = LENGTH ls)))` >>
+srw_tac [][Abbr`P`] >>
+numLib.LEAST_ELIM_TAC >>
+srw_tac [][] >- 
+
+WF_REL_TAC `measure (λM. LEAST n. ∃s ls. wfstate s ∧ list_of_List embed_Term s M ls ∧ (n = LENGTH ls))` >>
 srw_tac [][] >>
 numLib.LEAST_ELIM_TAC >>
 srw_tac [][] >- metis_tac [] >>
@@ -593,6 +758,8 @@ srw_tac [][] >- (
   Cases_on `M` >> fsrw_tac [][raw_lookup_def,STATE_OPTION_IGNORE_BIND_def] >>
   fsrw_tac [][STATE_OPTION_UNIT_def] >>
   METIS_TAC [] ) >>
+fsrw_tac [boolSimps.DNF_ss][] >>
+ptypesTheory.TailOfList_TL
 would want some TailOfList correctness results here to make things easier...
 
 )
@@ -602,54 +769,6 @@ W (curry op ##) (unconv_rule state_option_consts) p;
 (* You can then use save_thm to save the right form of the definition and
 induction. There are no extra flags or tags necessary to completely emulate
 Define, right? *)
-
-SIMP_CONV (srw_ss()) [] (Term  `ifcong n = (if n = 0 then EVERY ifcong else NULL) [1]`);
-DefnBase.read_congs()
-
-val ifcong_defn = Defn.Hol_defn "ifcong"
-  `ifcong n = (if n = 0 then EVERY ifcong else NULL) [1]`;
-
-val ifcong2_defn = Defn.Hol_defn "ifcong2"
-  `ifcong2 n = (if n = 0 then (λls. EVERY ifcong2 ls) else NULL) [1]`;
-
-val ifcong3_defn = Defn.Hol_defn "ifcong3"
-  `ifcong3 n = (if n = 0 then (λls. (ls = [1]) ∧ EVERY ifcong3 ls) else NULL) [1]`;
-
-foo 0 = EVERY foo [1] = foo 1 = NULL [1] = F
-foo 1 = NULL [1] = F
-
-(*
-val fail = Hol_defn "ignore_rec" Term`
-  ignore_rec = STATE_OPTION_IGNORE_BIND
-                 (λs. OPTION_BIND (FLOOKUP s 0)
-                       (OPTION_MAP (C $, s) o OPTION_GUARD o ($<> 0)))
-                 (λs. ignore_rec (s |+ (0, s ' 0 - 1)))`;
-
-val _ = Hol_defn "foo0" `foo0 = (λs. s ≠ 0 ∧ foo0 (s - 1))`;
-val _ = Hol_defn "foo1" `foo1 x = (λs. s ≤ x ∧ foo1 x (SUC s))`;
-*)
-
-(*
-val STATE_OPTION_GET_def = Define`
-  STATE_OPTION_GET : ('a,'a) state_option
-  s = SOME (s,s)`;
-
-Hol_defn "plen"
-(*(print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] o Term)*)
-`
-  plen M = do
-    s <- STATE_OPTION_GET ;
-    STATE_OPTION_LIFT (OPTION_GUARD (∃ls. list_of_List embed_Term s M ls) ()) ;
-    b <- EmptyListOfTerms M ;
-    n <- if ¬ b then do
-      M <- TailOfListOfTerms M ;
-      plen M
-    od else return 0 ;
-    return (n + 1)
-  od`
-
-app ((fn x => print_backend_term_without_overloads_on["monad_bind","monad_unitbind"] x before print"\n") o concl) (DefnBase.read_congs())
-*)
 
 val raw_while_def = Define`
   raw_while ((inj,prj) : ('a -> 'b) # ('b -> 'c # 'a))
