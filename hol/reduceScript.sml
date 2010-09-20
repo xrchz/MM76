@@ -2,6 +2,46 @@ open HolKernel boolLib bossLib Parse monadsyntax ptypes_definitionsTheory lcsymt
 
 val _ = new_theory "reduce"
 
+Hol_defn "plen"
+`plen M s =
+  monad_unitbind
+    (λs.
+       STATE_OPTION_LIFT
+         (OPTION_GUARD
+            (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s)
+    (λs.
+       monad_bind (λs. EmptyListOfTerms M s)
+         (λb s.
+            if ¬b then
+              monad_bind (λs. TailOfListOfTerms M s)
+                (λM s.
+                   monad_bind (\s. plen M s) (λn s. return (n + 1) s) s)
+                s
+            else
+              return 0 s) s) s`
+
+val _ = delete_const "plen";
+val _ = delete_binding "plen_curried_def";
+val _ = delete_binding "plen_tupled_primitive_def";
+
+Hol_defn "plen"
+`plen M s =
+  monad_unitbind
+    (λs.
+       STATE_OPTION_LIFT
+         (OPTION_GUARD
+            (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s)
+    (λs.
+       monad_bind (λs. EmptyListOfTerms M s)
+         (λb s.
+            if ¬b then
+              monad_bind (λs. TailOfListOfTerms M s)
+                (λM s.
+                   monad_bind (\s. plen M s) (λn s. return (n + 1) s) s)
+                s
+            else
+              return 0 s) s) s`
+
 (*
 HOW DO YOU TURN
 
@@ -616,26 +656,6 @@ val plen_defn = Defn.Hol_defn "plen"
              else (STATE_OPTION_UNIT 0 s))
       s)
  s`
-*)
-
-(*
-Hol_defn "plen"
-`plen M s =
-  monad_unitbind
-    (λs.
-       STATE_OPTION_LIFT
-         (OPTION_GUARD
-            (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s)
-    (λs.
-       monad_bind (λs. EmptyListOfTerms M s)
-         (λb s.
-            if ¬b then
-              monad_bind (λs. TailOfListOfTerms M s)
-                (λM s.
-                   monad_bind (plen M) (λn s. return (n + 1) s) s)
-                s
-            else
-              return 0 s) s) s`
 *)
 
 val s = ``s:state``;
