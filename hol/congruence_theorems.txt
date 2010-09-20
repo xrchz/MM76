@@ -1,0 +1,32 @@
+The congruence theorem for const should conform to the following grammar:
+
+thm := hyp1 /\ ... /\ hypn ==> (const x1 ... xn = const y1 ... yn)
+hypi := (xi = yi) | !zi1 ... zimi. termi ==> (xi zi1 ... zimi = yi zi1 ... zimi)
+
+Flexibility 1:
+Any free variables (xi, yi, or a free variable in termi) may be universally
+quantified at the top level.
+
+Flexibility 2:
+The conjuncts hyp1 ... hypn may appear in any order.
+
+Limitation 1:
+The lhs of the conclusion must match the form of any use of the constant in a
+definition equation (or else termination conditions won't be extracted
+correctly for that use).
+
+Limitation 2:
+When the lhs of the conclusion of hypi is applied to mi variables, then xi must
+be an abstraction of at least (exactly?) mi variables in any use of the
+constant ...
+
+Limitation 3:
+add_cong (and export_cong) will not check congruence rules for conformance.
+
+Limitation 4:
+add_cong (and export_cong) will not check that only one congruence rule is
+supplied per constant.
+
+Limitation 5:
+Nested abstractions in the term to be defined must have distinct bound
+variables. (Konrad is working on a bug fix for this.)
