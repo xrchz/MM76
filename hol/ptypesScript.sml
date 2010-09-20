@@ -1209,6 +1209,14 @@ pop_assum mp_tac >>
 simp_tac (srw_ss()) [Once list_of_AuxList_cases] >>
 srw_tac [][UNCURRY]);
 
+val list_of_List_unique = Q.store_thm(
+"list_of_List_unique",
+`list_of_List emb s l ls ∧ list_of_List emb s l ls' ⇒ (ls' = ls)`,
+srw_tac [][list_of_List_def] >>
+imp_res_tac lookup_state >>
+fsrw_tac [][] >> srw_tac [][] >>
+imp_res_tac list_of_AuxList_unique);
+
 val TailOfList_TL = Q.store_thm(
 "TailOfList_TL",
 `wfstate s ∧ is_embed emb ∧
