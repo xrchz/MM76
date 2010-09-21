@@ -5,6 +5,12 @@ val _ = new_theory "ptypes_definitions"
 val _ = inferior_overload_on("=+", ``λk v f. f |+ (k,v)``);
 val _ = overload_on("|+", ``λf kv. f |+ kv``);
 
+val _ = overload_on("monad_bind", ``STATE_OPTION_BIND o STATE_OPTION_LIFT``);
+val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND o STATE_OPTION_LIFT``);
+val _ = overload_on("monad_bind", ``STATE_OPTION_BIND``);
+val _ = overload_on("monad_unitbind", ``STATE_OPTION_IGNORE_BIND``);
+val _ = overload_on("return", ``STATE_OPTION_UNIT``);
+
 val _ = Hol_datatype `ptr = addr of 'a itself => num`;
 val num_to_ptr_def = Define `num_to_ptr n = addr (:'a) n`;
 val ptr_to_num_def = Define `ptr_to_num (addr _ n) = n`;

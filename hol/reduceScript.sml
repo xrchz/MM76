@@ -1,4 +1,4 @@
-open HolKernel boolLib boolSimps SatisfySimps bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory option_guardTheory
+open HolKernel boolLib boolSimps SatisfySimps bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory state_option_congTheory option_guardTheory
 
 val _ = new_theory "reduce"
 
