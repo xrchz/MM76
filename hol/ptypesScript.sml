@@ -1,4 +1,4 @@
-open HolKernel bossLib boolLib boolSimps SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory reachTheory lcsymtacs option_guardTheory
+open HolKernel bossLib boolLib boolSimps SatisfySimps Parse ptypes_definitionsTheory pred_setTheory finite_mapTheory optionTheory state_optionTheory pairTheory combinTheory relationTheory reachTheory lcsymtacs
 
 val _ = new_theory "ptypes"
 

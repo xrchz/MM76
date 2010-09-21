@@ -1,4 +1,4 @@
-open HolKernel boolLib boolSimps SatisfySimps bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory state_option_congTheory option_guardTheory
+open HolKernel boolLib boolSimps SatisfySimps bossLib Parse monadsyntax ptypesTheory lcsymtacs state_optionTheory state_option_congTheory
 
 val _ = new_theory "reduce"
 
@@ -22,7 +22,7 @@ val plen_defn = Hol_defn "plen"
 
 val thms = Defn.tprove(plen_defn,
 srw_tac [DNF_ss][pairTheory.FORALL_PROD] >>
-srw_tac [][STATE_OPTION_LIFT_def,OPTION_GUARD_def] >>
+srw_tac [][STATE_OPTION_LIFT_def,optionTheory.OPTION_GUARD_def] >>
 WF_REL_TAC `measure (λ(M,s). LENGTH (@ls. list_of_List embed_Term s M ls))` >>
 srw_tac [][] >>
 imp_res_tac EmptyList_NULL >>
