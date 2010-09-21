@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse ptypes_definitionsTheory lcsymtacs state_optionTheory option_guardTheory
+open HolKernel boolLib bossLib Parse ptypes_definitionsTheory state_optionTheory option_guardTheory
 
 val _ = new_theory "reduce"
 
@@ -7,7 +7,7 @@ val q = `plen M s =
     (λs.
        STATE_OPTION_LIFT
          (OPTION_GUARD
-            (wfstate s ∧ ∃ls. list_of_List embed_Term s M ls)) s)
+            (ARB M s)) s)
     (λs.
        STATE_OPTION_BIND (λs. EmptyListOfTerms M s)
          (λb s.
