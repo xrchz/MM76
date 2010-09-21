@@ -1,4 +1,4 @@
-open HolKernel boolLib bossLib Parse state_optionTheory option_guardTheory
+open HolKernel boolLib bossLib Parse state_optionTheory
 
 val _ = new_theory "reduce"
 
