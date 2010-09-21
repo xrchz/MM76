@@ -28,5 +28,9 @@ add_cong (and export_cong) will not check that only one congruence rule is
 supplied per constant.
 
 Limitation 5:
-Nested abstractions in the term to be defined must have distinct bound
-variables. (Konrad is working on a bug fix for this.)
+Bound variables in the hyps must have distinct names.
+(Konrad may be working on a bug fix for this.)
+
+Remark:
+The equalities in the grammar cannot be reversed.
+For example (yi = xi) is not valid for hypi.
