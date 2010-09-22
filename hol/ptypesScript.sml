@@ -659,6 +659,39 @@ srw_tac [][] >|[
     fsrw_tac [][tailR1_def,FLOOKUP_UPDATE] )] >>
 PROVE_TAC [RTC_RULES_RIGHT1]);
 
+val tailR_remove_unreachable = Q.store_thm(
+"tailR_remove_unreachable",
+`¬tailR s l r n ⇒ (tailR (s \\ r) l m n ⇔ tailR s l m n)`,
+strip_tac >> EQ_TAC >>
+strip_tac >> qpat_assum `~tailR s l r n` mp_tac >>
+pop_assum mp_tac >>
+map_every qid_spec_tac [`n`,`m`] >>
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][] >- (
+  qmatch_assum_rename_tac `tailR1 ss l n p` ["ss"] >>
+  `p ≠ r` by PROVE_TAC [RTC_REFL] >>
+  `tailR1 s l n p` by (
+    fsrw_tac [][tailR1_def,DOMSUB_FLOOKUP_THM]) >>
+  PROVE_TAC [RTC_RULES_RIGHT1] ) >>
+qmatch_assum_rename_tac `tailR1 s l n p` [] >>
+`p ≠ r` by PROVE_TAC [RTC_REFL] >>
+`tailR1 (s \\ r) l n p` by (
+  fsrw_tac [][tailR1_def,DOMSUB_FLOOKUP_THM] ) >>
+PROVE_TAC [RTC_RULES_RIGHT1] );
+
+val tailR_remove_last = Q.store_thm(
+"tailR_remove_last",
+`tailR (s \\ (ptr_to_num l)) l m n ⇔ tailR s l m n`,
+EQ_TAC >> map_every qid_spec_tac [`n`,`m`] >>
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][] >|[
+  `tailR1 s l n n'` by (
+    fsrw_tac [][tailR1_def,DOMSUB_FLOOKUP_THM] >>
+    pop_assum mp_tac >> srw_tac [][] ),
+  `tailR1 (s \\ (ptr_to_num l)) l n n'` by (
+    fsrw_tac [][tailR1_def,DOMSUB_FLOOKUP_THM] )] >>
+PROVE_TAC [RTC_RULES_RIGHT1]);
+
 val headR_assign_unreachable = Q.store_thm(
 "headR_assign_unreachable",
 `¬tailR s l r n ⇒ (headR (s |+ (r,v)) l m n ⇔ headR s l m n)`,
@@ -674,6 +707,26 @@ val headR_assign_irrelevant_last = Q.store_thm(
 `(∀t. FLOOKUP s (ptr_to_num l) ≠ SOME (AuxList_value m t) ∧ v ≠ AuxList_value m t) ⇒
  (headR (s |+ (ptr_to_num l,v)) l m n ⇔ headR s l m n)`,
 srw_tac [][headR_def,tailR_assign_last,FLOOKUP_UPDATE] >>
+srw_tac [][EQ_IMP_THM] >>
+Cases_on `a = ptr_to_num l` >> fsrw_tac [SATISFY_ss][] >>
+TRY (qexists_tac `a`) >>
+srw_tac [][] >> fsrw_tac [DNF_ss][]);
+
+val headR_remove_unreachable = Q.store_thm(
+"headR_remove_unreachable",
+`¬tailR s l r n ⇒ (headR (s \\ r) l m n ⇔ headR s l m n)`,
+srw_tac [][headR_def] >>
+srw_tac [][tailR_remove_unreachable] >>
+srw_tac [][EQ_IMP_THM,DOMSUB_FLOOKUP_THM] >>
+Cases_on `a=r` >> fsrw_tac [SATISFY_ss][] >>
+qexists_tac `a` >>
+srw_tac [][]);
+
+val headR_remove_irrelevant_last = Q.store_thm(
+"headR_remove_irrelevant_last",
+`(∀t. FLOOKUP s (ptr_to_num l) ≠ SOME (AuxList_value m t)) ⇒
+ (headR (s \\ (ptr_to_num l)) l m n ⇔ headR s l m n)`,
+srw_tac [][headR_def,tailR_remove_last,DOMSUB_FLOOKUP_THM] >>
 srw_tac [][EQ_IMP_THM] >>
 Cases_on `a = ptr_to_num l` >> fsrw_tac [SATISFY_ss][] >>
 TRY (qexists_tac `a`) >>
