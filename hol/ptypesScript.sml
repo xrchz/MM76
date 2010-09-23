@@ -1430,7 +1430,7 @@ Cases_on `p` >> srw_tac [][]);
 
 val AppendLists_APPEND = Q.store_thm(
 "AppendLists_APPEND",
-`wfstate s ∧
+`wfstate s ∧ is_embed emb ∧
  list_of_List emb s l1 ls1 ∧
  list_of_List emb s l2 ls2 ∧
  ¬ tailR s.store (FST (THE (lookup emb l1 s))).last
@@ -1449,7 +1449,8 @@ qmatch_assum_rename_tac `lookup emb l2 s = SOME (lv2,s)` [] >>
 `ptr_to_num l2 ∈ FDOM s.store` by fsrw_tac [][lookup_succeeds,FLOOKUP_DEF] >>
 `s.cell_type (ptr_to_num l1) = List_type emb.type` by fsrw_tac [][lookup_succeeds] >>
 `s.cell_type (ptr_to_num l2) = List_type emb.type` by fsrw_tac [][lookup_succeeds] >>
-`ptr_to_num lv2.first ≠ 0 ⇒ (s.cell_type (ptr_to_num lv2.first) = AuxList_type emb.type)` by (
+`(ptr_to_num lv2.first ≠ 0 ⇒ (s.cell_type (ptr_to_num lv2.first) = AuxList_type emb.type)) ∧
+ (ptr_to_num lv2.last ≠ 0 ⇒ (s.cell_type (ptr_to_num lv2.last) = AuxList_type emb.type))` by (
   fsrw_tac [][wfstate_def] >>
   imp_res_tac typed_state_def >>
   ntac 2 (pop_assum mp_tac) >>
@@ -1457,7 +1458,8 @@ qmatch_assum_rename_tac `lookup emb l2 s = SOME (lv2,s)` [] >>
   srw_tac [][Once has_type_cases] >>
   fsrw_tac [][] >> srw_tac [][] >>
   fsrw_tac [][] ) >>
-`ptr_to_num lv1.first ≠ 0 ⇒ (s.cell_type (ptr_to_num lv1.first) = AuxList_type emb.type)` by (
+`(ptr_to_num lv1.first ≠ 0 ⇒ (s.cell_type (ptr_to_num lv1.first) = AuxList_type emb.type)) ∧
+ (ptr_to_num lv1.last ≠ 0 ⇒ (s.cell_type (ptr_to_num lv1.last) = AuxList_type emb.type))` by (
   fsrw_tac [][wfstate_def] >>
   imp_res_tac typed_state_def >>
   ntac 2 (pop_assum mp_tac) >>
@@ -1468,6 +1470,11 @@ qmatch_assum_rename_tac `lookup emb l2 s = SOME (lv2,s)` [] >>
   fsrw_tac [][]) >>
 `ptr_to_num l1 ≠ 0` by PROVE_TAC [wfstate_def] >>
 `ptr_to_num l2 ≠ 0` by PROVE_TAC [wfstate_def] >>
+`ptr_to_num l1 ≠ ptr_to_num lv1.first ∧
+ ptr_to_num l1 ≠ ptr_to_num lv1.last ∧
+ ptr_to_num l1 ≠ ptr_to_num lv2.first ∧
+ ptr_to_num l2 ≠ ptr_to_num lv2.first ∧
+ ptr_to_num l2 ≠ ptr_to_num lv2.last` by metis_tac [wfstate_def,type_distinct] >>
 `l1 ≠ l2` by (
   spose_not_then strip_assume_tac >>
   fsrw_tac [][] >> srw_tac [][] >>
@@ -1488,10 +1495,6 @@ reverse (srw_tac [DNF_ss][AppendLists_def,UNCURRY]) >- (
                   |> imp_res_tac) >>
   fsrw_tac [][ptr_equality] >>
   pop_assum (K ALL_TAC) >>
-  conj_tac >- (
-    Cases_on `ptr_to_num lv2.last = 0` >> fsrw_tac [][] >>
-    spose_not_then strip_assume_tac >>
-    fsrw_tac [][] ) >>
   qabbrev_tac `m = ptr_to_num l2` >>
   `s'' = s' with <|store updated_by combin$C $\\ m; cell_type updated_by (m =+ s'.cell_type m)|>` by (
     Cases_on `l2` >> fsrw_tac [][] >>
@@ -1541,5 +1544,58 @@ reverse (srw_tac [DNF_ss][AppendLists_def,UNCURRY]) >- (
       fsrw_tac [][Abbr`m`,headR_def,FLOOKUP_DEF,Once RTC_CASES2,tailR1_def] >>
       PROVE_TAC [wfstate_def] ) >>
     metis_tac [type_inductive] ) >>
+`?h2 t2. lookup emb lv2.first s = SOME (AuxList h2 t2,s)` by (
+  fsrw_tac [][Once list_of_AuxList_cases] >>
+  qmatch_assum_rename_tac `lookup emb lv2.first s = SOME p` [] >>
+  Cases_on `p` >> srw_tac [][] >>
+  metis_tac [lookup_state,SND,AuxList_nchotomy] ) >>
+srw_tac [][] >>
+`?s'. assign emb lv1.last (AuxList h2 t2) s = SOME ((),s')` by (
+  `ptr_to_num lv1.last ∈ FDOM s.store` by (
+    spose_not_then strip_assume_tac >>
+    `ptr_to_num lv1.last = 0` by (
+      match_mp_tac (GEN_ALL cell_reach_typed_state_unbound_eq_0) >>
+      map_every qexists_tac [`s`,`ptr_to_num l1`] >>
+      fsrw_tac [][wfstate_def] >>
+      match_mp_tac RTC_SUBSET >>
+      srw_tac [][cell_reach1_def] >>
+      fsrw_tac [][lookup_succeeds] >>
+      Cases_on `v` >> fsrw_tac [][] >> srw_tac [][reach1_cases] ) >>
+    fsrw_tac [][GSYM ptr_equality] ) >>
+  Cases_on `lv1.last` >> fsrw_tac [][ptr_equality,ITSELF_UNIQUE] ) >>
+srw_tac [][] >>
+`?s''. assign emb l1 (List lv1.first lv2.last) s' = SOME ((),s'')` by (
+  imp_res_tac assign_FDOM >>
+  imp_res_tac assign_cell_type >>
+  Cases_on `l1` >> fsrw_tac [][APPLY_UPDATE_THM] ) >>
+srw_tac [][] >>
+`?s'''. dispose lv2.first s'' = SOME ((),s''')` by
+  MATCH_ACCEPT_TAC dispose_succeeds >>
+`?s''''. dispose l2 s''' = SOME ((),s'''')` by
+  MATCH_ACCEPT_TAC dispose_succeeds >>
+srw_tac [][] >>
+(lookup_dispose
+ |> Q.GEN `p2` |> Q.ISPEC `l1:'a ptr`
+ |> Q.GEN `x` |> Q.SPEC `(),s''''`
+ |> MATCH_MP |> (fn f => first_assum (assume_tac o Q.GEN`emb` o f))) >>
+fsrw_tac [][] >> pop_assum (K ALL_TAC) >>
+srw_tac [DNF_ss][ptr_equality,EXISTS_PROD] >>
+(lookup_dispose
+ |> Q.GEN `p1` |> Q.ISPEC `lv2.first`
+ |> Q.GEN `p2` |> Q.ISPEC `l1:'a List ptr`
+ |> Q.GEN `x` |> Q.SPEC `(),s'''`
+ |> MATCH_MP |> (fn f => first_assum (assume_tac o Q.GEN`emb` o f))) >>
+fsrw_tac [][] >> pop_assum (K ALL_TAC) >>
+srw_tac [DNF_ss][ptr_equality,EXISTS_PROD] >>
+`lookup emb l1 (SND ((),s'')) = SOME (List lv1.first lv2.last, (SND ((),s'')))` by (
+  match_mp_tac (Q.GEN `s` lookup_assign) >>
+  srw_tac [SATISFY_ss][is_embed_List] ) >>
+fsrw_tac [][] >>
+
+dispose_store
+list_of_AuxList_remove_unreachable
+`~tailR s.store lv2.last (ptr_to_num l2) (ptr_to_num lv1.first)`
+
+list_of_AuxList_assign_unreachable
 
 val _ = export_theory ()
