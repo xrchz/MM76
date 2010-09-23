@@ -102,7 +102,7 @@ imp_res_tac lookup_state >> fsrw_tac [][]);
 
 val dispose_store = Q.store_thm(
 "dispose_store",
-`(dispose p s = SOME x) ⇒ ((SND x).store \\ ptr_to_num p = s.store \\ ptr_to_num p)`,
+`(dispose p s = SOME x) ⇒ ((SND x).store = s.store \\ ptr_to_num p)`,
 Cases_on `p` >> srw_tac [][] >> srw_tac [][]);
 
 val dispose_cell_type = Q.store_thm(
