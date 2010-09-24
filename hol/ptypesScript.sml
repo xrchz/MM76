@@ -1428,6 +1428,28 @@ val dispose_succeeds = Q.store_thm(
 `∀p s. ∃s'. dispose p s = SOME ((),s')`,
 Cases_on `p` >> srw_tac [][]);
 
+val list_of_AuxList_shift_last_APPEND = Q.store_thm(
+"list_of_AuxList_shift_last_APPEND",
+`∀p ls1. list_of_AuxList emb s l1 p ls1 ⇒
+        ¬tailR s.store l1 (ptr_to_num l2) (ptr_to_num p) ∧
+        list_of_AuxList emb s l2 l1 ls2 ⇒
+        list_of_AuxList emb s l2 p (ls1 ++ ls2)`,
+ho_match_mp_tac list_of_AuxList_ind >>
+srw_tac [][] >>
+fsrw_tac [][UNCURRY] >> srw_tac [][] >>
+fsrw_tac [][] >> srw_tac [][] >>
+srw_tac [DNF_ss][Once list_of_AuxList_cases,UNCURRY] >- (
+  spose_not_then strip_assume_tac >> fsrw_tac [][] ) >>
+first_x_assum match_mp_tac >>
+qmatch_assum_rename_tac `lookup emb p s = SOME pp` [] >>
+`tailR1 s.store l1 (ptr_to_num (FST pp).tail) (ptr_to_num p)` by (
+  srw_tac [][tailR1_def,ptr_equality] >>
+  fsrw_tac [][lookup_succeeds] >>
+  qmatch_assum_rename_tac `project_AuxList v = SOME (FST pp)` [] >>
+  qpat_assum `project_AuxList v = SOME (FST pp)` (assume_tac o SYM) >>
+  Cases_on `v` >> fsrw_tac [][] ) >>
+PROVE_TAC [RTC_RULES_RIGHT1]);
+
 val AppendLists_APPEND = Q.store_thm(
 "AppendLists_APPEND",
 `wfstate s ∧ is_embed emb ∧
