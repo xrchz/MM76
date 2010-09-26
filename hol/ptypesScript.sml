@@ -735,7 +735,7 @@ srw_tac [][] >> fsrw_tac [DNF_ss][]);
 val list_of_AuxList_assign_last = Q.store_thm(
 "list_of_AuxList_assign_last",
 `∀p ls. list_of_AuxList emb s l p ls ⇒
-        ¬ headR s.store l (ptr_to_num l) (ptr_to_num p) ⇒
+        (ptr_to_num l ∈ FDOM s.store ⇒ ¬headR s.store l (ptr_to_num l) (ptr_to_num p)) ⇒
         list_of_AuxList emb (s with <|store updated_by (ptr_to_num l =+ v);
                                       cell_type updated_by (ptr_to_num l =+ t)|>) l p ls`,
 ho_match_mp_tac list_of_AuxList_ind >>
@@ -758,7 +758,9 @@ qmatch_assum_rename_tac `FLOOKUP s.store nh = SOME hv` [] >>
   spose_not_then strip_assume_tac >>
   srw_tac [][] >>
   fsrw_tac [][headR_def] >>
-  pop_assum (qspec_then `ptr_to_num p` mp_tac) >>
+  `ptr_to_num l ∈ FDOM s.store` by fsrw_tac [][FLOOKUP_DEF] >>
+  fsrw_tac [][] >>
+  first_x_assum (qspec_then `ptr_to_num p` mp_tac) >>
   srw_tac [][] ) >>
 srw_tac [][APPLY_UPDATE_THM,ptr_equality,FLOOKUP_UPDATE] >>
 first_x_assum match_mp_tac >>
