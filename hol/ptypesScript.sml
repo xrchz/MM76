@@ -1452,6 +1452,26 @@ qmatch_assum_rename_tac `lookup emb p s = SOME pp` [] >>
   Cases_on `v` >> fsrw_tac [][] ) >>
 PROVE_TAC [RTC_RULES_RIGHT1]);
 
+val list_of_AuxList_tailR_IS_SUFFIX = Q.store_thm(
+"list_of_AuxList_tailR_IS_SUFFIX",
+`∀p ls. list_of_AuxList emb s l p ls ⇒
+          tailR s.store l (ptr_to_num m) (ptr_to_num p) ⇒
+                ∃ls0. list_of_AuxList emb s l m ls0 ∧ IS_SUFFIX ls ls0`,
+ho_match_mp_tac list_of_AuxList_strongind >>
+conj_tac >- (
+  srw_tac [][Once RTC_CASES2,tailR1_def,ptr_equality] >>
+  srw_tac [][Once list_of_AuxList_cases] ) >>
+srw_tac [][UNCURRY] >>
+fsrw_tac [][] >> srw_tac [][] >>
+qpat_assum `tailR s.store l X Y` mp_tac >>
+srw_tac [][Once RTC_CASES2,tailR1_def,ptr_equality] >- (
+  srw_tac [DNF_ss][Once list_of_AuxList_cases,UNCURRY] >>
+  qexists_tac `ls` >> srw_tac [][] ) >>
+Cases_on `x` >> fsrw_tac [][lookup_succeeds] >>
+srw_tac [][] >> fsrw_tac [][] >>
+qexists_tac `ls0` >> srw_tac [][] >>
+fsrw_tac [][rich_listTheory.IS_SUFFIX_APPEND]);
+
 val AppendLists_APPEND = Q.store_thm(
 "AppendLists_APPEND",
 `wfstate s ∧ is_embed emb ∧
