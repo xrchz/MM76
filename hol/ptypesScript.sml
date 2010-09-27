@@ -496,7 +496,7 @@ srw_tac [][APPLY_UPDATE_THM,FLOOKUP_UPDATE] >>
 fsrw_tac [][FLOOKUP_DEF]);
 
 val tailR1_def = Define`
-  tailR1 s l n1 n2 = n2 ≠ ptr_to_num l ∧ ∃h. FLOOKUP s n2 = SOME (AuxList_value h n1)`;
+  tailR1 s (l:'a AuxList ptr) n1 n2 = n2 ≠ ptr_to_num l ∧ ∃h. FLOOKUP s n2 = SOME (AuxList_value h n1)`;
 val _ = overload_on("tailR", ``λs last. RTC (tailR1 s last)``);
 
 val list_of_AuxList_tailR_type = Q.store_thm(
