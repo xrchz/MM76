@@ -1489,6 +1489,21 @@ srw_tac [][] >> fsrw_tac [][] >>
 qexists_tac `ls0` >> srw_tac [][] >>
 fsrw_tac [][rich_listTheory.IS_SUFFIX_APPEND]);
 
+val tailR_swap_last = Q.store_thm(
+"tailR_swap_last",
+`∀m n. tailR s (l1:'a AuxList ptr) m n ⇒
+ ¬tailR s (num_to_ptr m:'a AuxList ptr) (ptr_to_num l2) n ⇒
+ tailR s (l2:'a AuxList ptr) m n`,
+ho_match_mp_tac RTC_INDUCT_RIGHT1 >>
+srw_tac [][tailR1_def] >>
+qmatch_abbrev_tac `X` >>
+qpat_assum `¬tailR s ll (ptr_to_num l2) nn` mp_tac >>
+reverse (srw_tac [][Once RTC_CASES2,tailR1_def]) >-
+  srw_tac [][Abbr`X`] >>
+fsrw_tac [][Abbr`X`] >>
+match_mp_tac (CONJUNCT2 (SPEC_ALL RTC_RULES_RIGHT1)) >>
+srw_tac [][tailR1_def]);
+
 val AppendLists_APPEND = Q.store_thm(
 "AppendLists_APPEND",
 `wfstate s ∧ is_embed emb ∧
