@@ -24,6 +24,7 @@ in
   val is_embed_AuxList = Q.store_thm("is_embed_AuxList", `is_embed (embed_AuxList emb)`, tac);
   val is_embed_List = Q.store_thm("is_embed_List", `is_embed (embed_List emb)`, tac);
 end
+val _ = export_rewrites["is_embed_List","is_embed_Variable","is_embed_SetOfVariables","is_embed_Term","is_embed_Multiequation","is_embed_TempMultiequation","is_embed_System","is_embed_AuxList"];
 
 val NOTIN_INFINITE_FDOM_exists = Q.store_thm(
 "NOTIN_INFINITE_FDOM_exists",
