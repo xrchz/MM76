@@ -13,7 +13,7 @@ local
   in
     not (Lib.mem tyname ["num","list"])
   end handle HOL_ERR _ => false | Bind => false
-  val tac = srw_tac [][EQ_IMP_THM,is_embed_def] >> rpt (Cases_on_if is_var' >> fsrw_tac [][])
+  val tac = srw_tac [][EQ_IMP_THM,is_embed_def] >> rpt (Cases_on_if is_var' >> fsrw_tac [][num_to_ptr_def])
 in
   val is_embed_Variable = Q.store_thm("is_embed_Variable", `is_embed embed_Variable`, tac);
   val is_embed_SetOfVariables = Q.store_thm("is_embed_SetOfVariables", `is_embed embed_SetOfVariables`, tac);
@@ -56,6 +56,24 @@ end g
 val _ = augment_srw_ss [rewrites [STATE_OPTION_IGNORE_BIND_def,STATE_OPTION_BIND_def,STATE_OPTION_FAIL_def,STATE_OPTION_UNIT_def]]
 val _ = augment_srw_ss [rewrites [OPTION_BIND_def,OPTION_IGNORE_BIND_def,OPTION_GUARD_def]]
 
+val ptr_to_num_to_ptr = Q.store_thm(
+"ptr_to_num_to_ptr",
+`ptr_to_num (num_to_ptr n) = n`,
+srw_tac [][num_to_ptr_def]);
+val _ = export_rewrites["ptr_to_num_to_ptr"];
+
+val num_to_ptr_to_num = Q.store_thm(
+"num_to_ptr_to_num",
+`num_to_ptr (ptr_to_num p) = p`,
+Cases_on `p` >> srw_tac [][ITSELF_UNIQUE,num_to_ptr_def]);
+val _ = export_rewrites["num_to_ptr_to_num"];
+
+val ptr_equality = Q.store_thm(
+"ptr_equality",
+`(ptr_to_num p1 = ptr_to_num p2) ⇔ (p1 = p2)`,
+Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
+PROVE_TAC [ITSELF_UNIQUE]);
+
 val CreateList_empty = Q.store_thm(
 "CreateList_empty",
 `(CreateList emb s0 = SOME (l, s)) ⇒ list_of_List emb s l []`,
@@ -64,7 +82,7 @@ free_addr_elim_tac >> srw_tac [][EXISTS_PROD] >>
 qpat_assum `free_addr X = Y` mp_tac >>
 free_addr_elim_tac >> srw_tac [][] >>
 fsrw_tac [][] >> srw_tac [][] >>
-srw_tac [][list_of_List_def,Once list_of_AuxList_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM]);
+srw_tac [][list_of_List_def,Once list_of_AuxList_cases,EmptyList_def,FLOOKUP_UPDATE,APPLY_UPDATE_THM,GSYM ptr_equality]);
 
 val lookup_state = Q.store_thm(
 "lookup_state",
@@ -221,12 +239,6 @@ Cases_on `raw_lookup emb1 p1 s` >>
 Cases_on `p2` >> srw_tac [][] >>
 fsrw_tac [][FLOOKUP_UPDATE,APPLY_UPDATE_THM,lookup_succeeds,lookup_fails] >>
 srw_tac [][EXISTS_PROD]);
-
-val ptr_equality = Q.store_thm(
-"ptr_equality",
-`(ptr_to_num p1 = ptr_to_num p2) ⇔ (p1 = p2)`,
-Cases_on `p1` >> Cases_on `p2` >> srw_tac [][] >>
-PROVE_TAC [ITSELF_UNIQUE]);
 
 val typed_cell_def = Q.store_thm(
 "typed_cell_def",
@@ -1022,6 +1034,7 @@ srw_tac [][] >>
 qmatch_assum_rename_tac `FLOOKUP s.store (ptr_to_num l0) = SOME (List_value a1 a2)` [] >>
 fsrw_tac [][typed_cell_def] >>
 fsrw_tac [][Once has_type_cases] >>
+fsrw_tac [][num_to_ptr_def,APPLY_UPDATE_THM] >>
 qho_match_abbrev_tac `?p1 p2 p3 p4. (assign emb l0 (List pa1 pn) ss = SOME (p1,p2)) ∧ X p2 p3 p4` >>
 `∃s'. assign emb l0 (List pa1 pn) ss = SOME ((),s')` by (
   Cases_on `l0` >> fsrw_tac [][Abbr`ss`,APPLY_UPDATE_THM] ) >>
@@ -1150,6 +1163,7 @@ conj_tac >- (
   qsuff_tac `list_of_AuxList emb (ss with <|store updated_by (ptr_to_num l0 =+ (embed_List emb).inject v) ;
                                             cell_type updated_by (ptr_to_num l0 =+ List_type emb.type)|>)
                                  pa2 pa1 ls` >- (
+    `num_to_ptr a1 = pa1` by srw_tac [][Abbr`pa1`,num_to_ptr_def] >> fsrw_tac [][] >>
     qmatch_abbrev_tac `list_of_AuxList emb ss1 pa2 pa1 ls ⇒ list_of_AuxList emb ss2 pa2 pa1 ls` >>
     qsuff_tac `ss1 = ss2` >- srw_tac [][] >>
     srw_tac [][Abbr`ss1`,Abbr`ss2`,state_component_equality] ) >>
@@ -1186,7 +1200,9 @@ conj_tac >- (
     PROVE_TAC [] ) >>
   PROVE_TAC [type_inductive] ) >>
 `a2 = ptr_to_num pa2` by srw_tac [][Abbr`pa2`] >>
-srw_tac [][Abbr`ss`,Abbr`pa1`] >>
+`a1 = ptr_to_num pa1` by srw_tac [][Abbr`pa1`] >>
+fsrw_tac [][tailR_assign_unreachable] >>
+srw_tac [][Abbr`ss`] >>
 srw_tac [][tailR_assign_last] >>
 srw_tac [][tailR_assign_unreachable]);
 
@@ -1344,7 +1360,7 @@ srw_tac [][] >>
   qpat_assum `has_type s CC VV (s.cell_type n)` mp_tac >>
   srw_tac [][Once has_type_cases] >>
   first_x_assum match_mp_tac >>
-  fsrw_tac [][Once RTC_CASES2,tailR1_def,FLOOKUP_DEF] >>
+  fsrw_tac [][Once RTC_CASES2,tailR1_def,FLOOKUP_DEF,GSYM ptr_equality] >>
   PROVE_TAC [] ) >>
 `ptr_to_num lv.last ≠ 0 ⇒ (s.cell_type (ptr_to_num lv.last) = AuxList_type emb.type)` by (
   strip_tac >>

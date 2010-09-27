@@ -8,7 +8,7 @@ val _ = overload_on("|+", ``λf kv. f |+ kv``);
 val _ = Hol_datatype `ptr = addr of 'a itself => num`;
 val num_to_ptr_def = Define `num_to_ptr n = addr (:'a) n`;
 val ptr_to_num_def = Define `ptr_to_num (addr _ n) = n`;
-val _ = export_rewrites ["num_to_ptr_def","ptr_to_num_def"];
+val _ = export_rewrites ["ptr_to_num_def"];
 val _ = overload_on("pnil",``addr (:'a) 0``);
 
 val _ = type_abbrev ("varname",``:string``);
